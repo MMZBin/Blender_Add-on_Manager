@@ -66,7 +66,7 @@ class KeymapManager:
         )
 
         for k in keys:
-            if ProcLoader.isDisabled(k.operator): continue
+            if ProcLoader.is_disabled(k.operator): continue
 
             #キーマップにアイテムを追加する
             keymap_item = keymap.keymap_items.new(

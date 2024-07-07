@@ -71,7 +71,7 @@ class PropertiesManager:
 
         register_props: List[Property] = []
         for name, op in properties:
-            if ProcLoader.isDisabled(op): continue
+            if ProcLoader.is_disabled(op): continue
 
             name_with_prefix = f"{cls.__name}_{name}"
             #例外をスローするとリロード機能が動作しない

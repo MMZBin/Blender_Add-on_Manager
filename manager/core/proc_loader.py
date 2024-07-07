@@ -76,7 +76,7 @@ class ProcLoader:
             sys.path.append(self.__path)
 
     @staticmethod
-    def isDisabled(clazz: type) -> bool:
+    def is_disabled(clazz: type) -> bool:
         """Check for the presence and value of 'addon_proc_is_disabled' attribute in the target class
 
         Args:
@@ -176,7 +176,7 @@ class ProcLoader:
                 clazz = clazz[1]
                 #対象のクラスがアドオンのクラスかつ無効でない場合追加する
                 if not any(issubclass(clazz, c) and  clazz != c for c in self.__TARGET_CLASSES): continue # type: ignore
-                if hasattr(clazz, 'addon_proc_is_disabled') and clazz.addon_proc_is_disabled == True: continue
+                if self.is_disabled(clazz): continue
 
                 #優先順位とクラスを辞書に追加する
                 if hasattr(clazz, 'addon_proc_priority'): cls_priority[clazz] = clazz.addon_proc_priority
