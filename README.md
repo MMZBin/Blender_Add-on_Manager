@@ -131,7 +131,7 @@ In this readme, the sample code is written with the following directory structur
 ## addon_manager.py
 - __AddonManager__ class
   - Basically, one instance is generated per addon, and this class instance is used when using each function.
-  - If you import at the module level, there is a possibility of circular reference, so please import with a narrowed scope such as functions or classes.
+  - To avoid circular references, use lazy imports (see the sample code for the [`PropertiesManager`](#properties_managerpy) class for an example).
     - **`__init__(path, target_dirs, local_symbols, addon_name, translation_table, cat_name, is_debug_mode)` method**
         - Arguments:
             - `path`: The path to the addon folder (usually the `__file__` variable in the `__init__.py` file).
@@ -324,10 +324,13 @@ In this readme, the sample code is written with the following directory structur
             bl_space_type = "VIEW_3D"
             bl_region_type = "UI"
 
-            def draw(self, context: Context):
+            def __init__(self):
+                #Lazy import
                 from .. import addon
+                self.__addon = addon
 
-                prop = addon.property.get_prop(context.scene, "hoge")
+            def draw(self, context: Context):
+                prop = self.__addon.property.get_prop(context.scene, "hoge")
                 self.layout.label(text= f"fuga = {prop.get('fuga')}")
         ```
 

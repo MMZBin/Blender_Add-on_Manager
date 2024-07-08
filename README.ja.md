@@ -132,7 +132,7 @@ def register():
 - __AddonManager__ クラス
   - アドオンの登録を行う中心的なクラスです。
   - 基本的に一つのアドオンにつき一つのインスタンスが生成され、各機能を使用する際はこのクラスのインスタンスを介します。
-  - モジュールレベルでインポートすると循環参照が発生する可能性があるので、関数やクラスなどスコープを絞ってインポートしてください。
+  - 循環参照を避けるため、遅延インポート(例: [`PropertiesManager`](#properties_managerpy)クラスのサンプルコード)を使用してください。
     - **`__init__(path, target_dirs, local_symbols, addon_name, translation_table, cat_name, is_debug_mode)` メソッド**
         - 引数
             - `path`: アドオンフォルダへのパス(通常は`__init__.py`ファイルの`__file__`変数)
@@ -326,10 +326,13 @@ def register():
             bl_space_type = "VIEW_3D"
             bl_region_type = "UI"
 
-            def draw(self, context: Context):
+            def __init__(self):
+                #遅延インポート
                 from .. import addon
+                self.__addon = addon
 
-                prop = addon.property.get_prop(context.scene, "hoge")
+            def draw(self, context: Context):
+                prop = self.__addon.property.get_prop(context.scene, "hoge")
                 self.layout.label(text= f"fuga = {prop.get('fuga')}")
         ```
 
