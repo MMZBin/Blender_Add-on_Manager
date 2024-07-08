@@ -56,8 +56,8 @@ def unregister(): addon.unregister()
 
 from bpy.types import Operator
 
-# Import the `Key` data class and the `KeymapManager` class to register the shortcut key
-from ..manager.core.keymap_manager import Key, KeymapManager
+# Import the `Key` data class to register the shortcut key
+from ..manager.core.keymap_manager import Key
 
 class HOGE_OT_Sample(Operator):
     bl_idname = "hoge.sample_operator"
@@ -70,7 +70,9 @@ class HOGE_OT_Sample(Operator):
         return {"FINISHED"}
 
 def register():
-    KeymapManager.add(Key(HOGE_OT_Sample, 'F1')) # Set the 'HOGE_OT_Sample' operator to execute when the F1 key is pressed
+    from .. import addon # Import the AddonManager instance generated in the __init__.py file
+
+    addon.keymap.add(Key(HOGE_OT_Sample, 'F1')) # Set the 'HOGE_OT_Sample' operator to execute when the F1 key is pressed
 ```
 
 ## Features
@@ -83,13 +85,13 @@ def register():
 - Use the [`priority`](#proc_loaderpy) decorator to control the loading order of specific classes.
     - Example: `@priority(42)`
 - Use the [`KeymapManager`](#keymap_managerpy) class to register shortcut keys.
-    - Example: `KeymapManager.add(Key(HOGE_OT_YourOperator, 'A'))`
+    - Example: `addon.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
 - You can register, reference, unregister property groups using the [`PropertiesManager`](#properties_managerpy) class.(The initial configuration requires the `addon_name` argument of the `AddonManager` class.)
     - Example
-        - Property registration: `PropertiesManager.add(Scene, [("your_properties", YourPropertyGroupClass)])`
+        - Property registration: `addon.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
         - Property reference:
         ```
-            prop = PropertiesManager.get(bpy.context.scene, "your_properties") #Acquiring the property
+            prop = addon.property.get(bpy.context.scene, "your_properties") #Acquiring the property
             value = prop.get('your_attribute') #Acquiring the property attribute
             prop.set('your_attribute', 'Hello, world!') #Setting the property value
         ```
@@ -128,6 +130,8 @@ In this readme, the sample code is written with the following directory structur
 
 ## addon_manager.py
 - __AddonManager__ class
+  - Basically, one instance is generated per addon, and this class instance is used when using each function.
+  - If you import at the module level, there is a possibility of circular reference, so please import with a narrowed scope such as functions or classes.
     - **`__init__(path, target_dirs, local_symbols, addon_name, translation_table, cat_name, is_debug_mode)` method**
         - Arguments:
             - `path`: The path to the addon folder (usually the `__file__` variable in the `__init__.py` file).
@@ -140,6 +144,11 @@ In this readme, the sample code is written with the following directory structur
                 - If `False` is specified, the `debug` folder directly under the directories specified in `target_dirs` will be ignored.
                 - If `True` is specified, the `reload()` method becomes available.
     - Create an instance in the `__init__.py` file, and wrap the `register()` and `unregister()` methods with global functions of the same name.
+
+    **`property` property**
+    - Returns the `PropertiesManager` instance associated with the instance.
+    **`keymap` property**
+    - Returns the `KeymapManager` instance associated with the instance.
 
     **`reload()` Method**
     - When the Blender's `script.reload` operator is executed, it reloads the entire add-on.
@@ -193,7 +202,6 @@ In this readme, the sample code is written with the following directory structur
 
 - __KeymapManager__ class
     - This class registers shortcut keys.
-    - This is a static class.
 
     **`add(keys, name, space_type, region_type, modal, tool) -> List[tuple[KeyMap, KeyMapItem]]` method**
 
@@ -212,21 +220,21 @@ In this readme, the sample code is written with the following directory structur
         - `modal`: Specifies whether it is in modal mode (default is `False`)
         - `tool`: Specifies whether it is in tool mode (default is `False`)
 
-    - Example: `KeymapManager.add(Key(HOGE_OT_YourOperator, 'A'))`
+    - Example: `addon.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
 
     **`delete(subject) -> bool` method**
     - Receives a tuple of keymap and keymap item or an operator class where shortcut keys are registered, and deletes the shortcut keys.
     - It accepts a keymap and keymap item as a tuple and deletes the shortcut key.
     - It returns `True` if it is correctly deleted, and `False` if a non-existent value is specified.
 
-    - Example: `KeymapManager.delete(kms)`
+    - Example: `addon.keymap.delete(kms)`
 
     **`unregister()` method**
 
     - Deletes all shortcut keys.
     - It is automatically called within the unregister() method of the AddonManager class, so it usually does not need to be explicitly called.
 
-    - Example: `KeymapManager.unregister()`
+    - Example: `addon.keymap.unregister()`
 
 ## properties_manager.py
 - __Property__ Class
@@ -252,7 +260,6 @@ In this readme, the sample code is written with the following directory structur
                 - `value`: Value to set
 
 - __PropertiesManager__ Class
-    - This is a static class.
     - It registers, unregisters, and references property groups (classes that inherit `bpy.types.PropertyGroup`).
     - Classes with the `disable` decorator are ignored.
     - To avoid name collisions with other addons, it automatically adds a prefix to the property name.
@@ -268,7 +275,7 @@ In this readme, the sample code is written with the following directory structur
                 - `prop_type`: Specifies the class to which the property will be added.
                 - `properties`: Accepts a tuple or list of tuples in the form `(property name, operator to register)`.
             - Return value: The name of the added property (already renamed)
-            - Example: `PropertiesManager.add(Scene, [("your_properties", YourPropertyGroupClass)])`
+            - Example: `addon.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
     - **`get_prop(context, attr, is_mangling) -> Any` Method**
         - Retrieves the property name.
         - If the specified property name does not exist, a `ValueError` occurs.
@@ -279,20 +286,18 @@ In this readme, the sample code is written with the following directory structur
                 - `is_mangling` (optional): Specifies whether to enable name modification if the `attr` argument does not have the standard prefix. (Default is `True`)
             - Return value
                 - The retrieved property
-            - Example: `prop = PropertiesManager.get(bpy.context.scene, "your_properties")`
+            - Example: `prop = addon.property.get(bpy.context.scene, "your_properties")`
     - **`delete(prop_name) -> bool` Method**
         - Deletes the property with the specified name.
         - Returns `True` if the property exists and `False` if it does not.
             - Argument: `prop_name`: The name of the property you want to delete
-        - Example: `PropertiesManager.delete("your_properties")`
+        - Example: `addon.property.delete("your_properties")`
     - **`unregister()` Method**
         - Deletes all registered properties.
         - Normally, it is automatically called by `AddonManager`, so there is no need to call it explicitly.
     - Example
         - Registering a property
         ```
-        from ..manager.core.properties_manager import PropertiesManager as pm
-
         from bpy.types import PropertyGroup
         from bpy.props import BoolProperty
 
@@ -305,14 +310,14 @@ In this readme, the sample code is written with the following directory structur
             fuga: BoolProperty(name="piyo", default=False)
 
         def register() -> None:
-            pm.add(Scene, ("hoge", Hoge_Properties))
+            from .. import addon
+
+            addon.property.add(Scene, ("hoge", Hoge_Properties))
 
         ```
         - プロパティを参照する
         ```
         from bpy.types import Panel, Context, Scene
-
-        from ..manager.core.properties_manager import PropertiesManager as pm
 
         class MMZ_PT_Prop(Panel):
             bl_label = "Property Test"
@@ -320,7 +325,9 @@ In this readme, the sample code is written with the following directory structur
             bl_region_type = "UI"
 
             def draw(self, context: Context):
-                prop = pm.get_prop(context.scene, "hoge")
+                from .. import addon
+
+                prop = addon.property.get_prop(context.scene, "hoge")
                 self.layout.label(text= f"fuga = {prop.get('fuga')}")
         ```
 
