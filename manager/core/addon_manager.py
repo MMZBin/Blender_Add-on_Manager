@@ -1,6 +1,9 @@
 #This program is distributed under the MIT License.
 #See the LICENSE file for details.
 
+# pyright: reportAttributeAccessIssue = false
+
+from types import MethodType
 from .proc_loader import ProcLoader
 from .keymap_manager import KeymapManager
 from .properties_manager import PropertiesManager
@@ -13,7 +16,7 @@ from bpy.app import translations
 class AddonManager:
     """This class in charge of registering and deregistering add-ons."""
     from typing import List, Any, Dict
-    from types import ModuleType
+    from types import ModuleType, MethodType
 
     def __init__(self, path: str, target_dirs: List[str], local_symbols: dict[str, Any], addon_name: str | None = None,
                  translation_table: Dict[str, Dict[tuple[Any, Any], str]] | None = None, cat_name: str | None = None, is_debug_mode: bool = False) -> None:
@@ -54,6 +57,9 @@ class AddonManager:
         #for cls in [clazz for clazz in self.__classes if issubclass(clazz, types.PropertyGroup)]:
         for cls in [clazz for clazz in self.__classes if not hasattr(types, clazz.bl_idname)]: # type: ignore
             if issubclass(cls, types.PropertyGroup) and cls.is_registered: continue # type: ignore
+
+            if hasattr(cls, 'set_manager') and isinstance(getattr(cls, 'set_manager'), MethodType): getattr(cls, 'set_manager')(self)
+
             register_class(cls)
 
         self.__call('register')
@@ -97,7 +103,15 @@ class AddonManager:
             mdl (ModuleType | type): Module from which to call function
             identifier (str): Name of the function to call
         """
-        if hasattr(mdl, identifier): getattr(mdl, identifier)()
+        from inspect import signature
+
+        if not hasattr(mdl, identifier): return
+
+        params = signature(getattr(mdl, identifier)).parameters
+        if 'manager' in params and len(params) == 1:
+            getattr(mdl, identifier)(self)
+        elif len(params) == 0: getattr(mdl, identifier)()
+        else: raise TypeError(f'The signature of the "{identifier}" function in the "{mdl}" module is invalid.')
 
     def __load(self, path: str, target_dirs: List[str], cat_name: str | None) -> None:
         self.__modules, self.__classes = ProcLoader(path, is_debug_mode=self.__is_debug_mode).load(target_dirs, cat_name)

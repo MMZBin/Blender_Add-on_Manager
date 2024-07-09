@@ -70,10 +70,8 @@ class HOGE_OT_Sample(Operator):
 
         return {"FINISHED"}
 
-def register():
-    from .. import addon # __init__.pyファイルで生成したAddonManagerインスタンスをインポートする
-
-    addon.keymap.add(Key(HOGE_OT_Sample, 'F1')) #F1キーが押されたときに'HOGE_OT_Sample'オペレーターが実行されるように設定する
+def register(manager): #'manager'引数はなくても良いです。
+    manager.keymap.add(Key(HOGE_OT_Sample, 'F1')) #F1キーが押されたときに'HOGE_OT_Sample'オペレーターが実行されるように設定する
 ```
 
 
@@ -87,13 +85,13 @@ def register():
 - [`priority`](#proc_loaderpy)デコレータを使うことで特定のクラスの読み込み順を制御することができます。
     - 例: `@priority(42)`
 - [`KeymapManager`](#keymap_managerpy)クラスを使用することでショートカットキーを登録することができます。
-    - 例: `addon.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
+    - 例: `manager.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
 - [`PropertiesManager`](#properties_managerpy)クラスを使用することでプロパティグループを登録・参照・解除することができます。(初期の構成では`AddonManager`クラスの`addon_name`引数が必要になります。)
     - 例
-        - プロパティの登録: `addon.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
+        - プロパティの登録: `manager.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
         - プロパティの参照:
         ```
-            prop = addon.property.get(bpy.context.scene, "your_properties") #プロパティの取得
+            prop = manager.property.get(bpy.context.scene, "your_properties") #プロパティの取得
             value = prop.get('your_attribute') #プロパティの属性の取得
             prop.set('your_attribute', 'Hello, world!') #プロパティの値を設定
         ```
@@ -104,7 +102,7 @@ def register():
         - 無効にすると、各ディレクトリ直下に`debug`ディレクトリが存在する場合、その中にあるモジュールが無視されます。
         - 有効にすると`debug`ディレクトリ内のモジュールが読み込まれ、アドオンの再読み込み機能([`reload()`](#addon_managerpy)メソッド)が使えるようになります。
 
-- 読み込み対象の各モジュールにregister()関数やunregister()関数がある場合、アドオンの登録・解除の際に呼び出されます。
+- 読み込み対象の各モジュールに`register()`関数や`unregister()`関数がある場合、アドオンの登録・解除の際に呼び出されます。
 - Blender標準形式の[翻訳テーブル](#addon_managerpy)を使用して多言語に対応させることができます。
 - [`constants.py`](#constantspy)にオペレーターの戻り値やモード名などいくつかの定数が用意されているため、入力の手間とタイプミスを減らすことができます。
 - `DrawText`クラスを使ってテキストの描画を簡素化できます。(ドキュメント未作成)
@@ -132,7 +130,8 @@ def register():
 - __AddonManager__ クラス
   - アドオンの登録を行う中心的なクラスです。
   - 基本的に一つのアドオンにつき一つのインスタンスが生成され、各機能を使用する際はこのクラスのインスタンスを介します。
-  - 循環参照を避けるため、遅延インポート(例: [`PropertiesManager`](#properties_managerpy)クラスのサンプルコード)を使用してください。
+  - アドオンのクラスに`set_manager(manager)`クラスメソッドが定義されている場合、登録時に対応するインスタンスが渡されます。([`PropertiesManager`](#properties_managerpy)の例を参照してください。)
+  - 各モジュールの`register()`関数や`unregister()`関数が`manager`という名前のひとつの引数を取る場合、対応するインスタンスが渡されます。
     - **`__init__(path, target_dirs, local_symbols, addon_name, translation_table, cat_name, is_debug_mode)` メソッド**
         - 引数
             - `path`: アドオンフォルダへのパス(通常は`__init__.py`ファイルの`__file__`変数)
@@ -148,6 +147,7 @@ def register():
 
     **`property`プロパティ**
     - インスタンスに紐づけられた`PropertiesManager`インスタンスを返します。
+
     **`keymap`プロパティ**
     - インスタンスに紐づけられた`KeymapManager`インスタンスを返します。
 
@@ -222,20 +222,20 @@ def register():
         - `modal`: モーダルモードかを指定します。(デフォルトは`False`)
         - `tool`: ツールモードかを指定します。(デフォルトは`False`)
 
-    - 例: `addon.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
+    - 例: `manager.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
 
     **`delete(subject) -> bool`メソッド**
     - キーマップとキーマップアイテムのタプルまたはショートカットキーが登録されているオペレータークラスを受け取り、ショートカットキーを削除します。
     - 正しく削除されたら`True`、存在しない値を指定すると`False`が返ります。
 
-    - 例: `addon.keymap.delete(kms)`
+    - 例: `manager.keymap.delete(kms)`
 
     **`unregister()`メソッド**
 
     - すべてのショートカットキーを削除します。
     - AddonManagerクラスのunregister()メソッド内で自動的に呼び出されるため、通常は明示的に呼び出す必要はありません。
 
-    - 例: `addon.keymap.unregister()`
+    - 例: `manager.keymap.unregister()`
 
 ## properties_manager.py
 - __Property__ クラス
@@ -276,7 +276,7 @@ def register():
                 - `prop_type`: プロパティを追加する対象のクラスを指定します。
                 - `properties`: `(プロパティ名, 登録するオペレーター)`の形式のタプルもしくはタプルのリストを受け取ります。
             - 戻り値: 追加したプロパティ
-            - 例: `addon.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
+            - 例: `manager.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
     - **`get_prop(context, attr, is_mangling) -> Any` メソッド**
         - プロパティを取得します。
         - 指定した名前のプロパティが存在しない場合は`ValueError`が発生します。
@@ -287,12 +287,12 @@ def register():
                 - `is_mangling`(オプション): `attr`引数に規定の接頭辞がない場合の名前の修正を有効にするかを指定します。(デフォルトは`True`)
             - 戻り値
                 - 取得したプロパティ
-            - 例: `prop = addon.property.get(bpy.context.scene, "your_properties")`
+            - 例: `prop = manager.property.get(bpy.context.scene, "your_properties")`
     - **`delete(prop_name) -> bool` メソッド**
         - 指定した名前のプロパティを削除します。
         - プロパティが存在すれば`True`、存在しなければ`False`を返します
             - 引数: `prop_name`: 削除したいプロパティ名
-        - 例: - 例: `addon.property.delete("your_properties")`
+        - 例: - 例: `manager.property.delete("your_properties")`
     - **`unregister()` メソッド**
         - 登録されているすべてのプロパティを削除します。
         - 通常は`AddonManager`によって自動的に呼び出されるため、明示的に呼び出す必要はありません。
@@ -305,35 +305,36 @@ def register():
 
         from bpy.types import Scene
 
+        from ..manager.core.addon_manager import AddonManager
+
         class Hoge_Properties(PropertyGroup):
             bl_idname = "Hoge_Properties"
             bl_label = "sample"
 
             fuga: BoolProperty(name="piyo", default=False)
 
-        def register() -> None:
-            from .. import addon
-
-            addon.property.add(Scene, ("hoge", Hoge_Properties))
+        def register(manager: AddonManager) -> None:
+            manager.property.add(Scene, ("hoge", Hoge_Properties))
 
         ```
         - プロパティを参照する
         ```
         from bpy.types import Panel, Context, Scene
+        from ..manager.core.addon_manager import AddonManager
 
         class MMZ_PT_Prop(Panel):
             bl_label = "Property Test"
             bl_space_type = "VIEW_3D"
             bl_region_type = "UI"
 
-            def __init__(self):
-                #遅延インポート
-                from .. import addon
-                self.__addon = addon
-
             def draw(self, context: Context):
-                prop = self.__addon.property.get_prop(context.scene, "hoge")
+                prop = self.__manager.property.get_prop(context.scene, "hoge")
                 self.layout.label(text= f"fuga = {prop.get('fuga')}")
+
+            #アドオンマネージャーを取得する
+            @classmethod
+            def set_manager(cls, manager: AddonManager) -> None:
+                cls.__manager = manager
         ```
 
 ## proc_loader.py
