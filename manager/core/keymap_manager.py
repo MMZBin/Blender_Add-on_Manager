@@ -34,9 +34,11 @@ class Key:
 class KeymapManager:
     """Manage the keymap.
     """
+    def __init__(self) -> None:
+        self.__shortcut_keys: List[tuple[KeyMap, KeyMapItem]] = []
+
     #ショートカットキーを追加する
-    @classmethod
-    def add(cls, keys: List[Key] | Key,
+    def add(self, keys: List[Key] | Key,
             name: str = 'Window', space_type: str = 'EMPTY', region_type: str = 'WINDOW',
             modal: bool = False, tool: bool = False) -> List[tuple[KeyMap, KeyMapItem]]:
         """Add keymaps
@@ -76,12 +78,11 @@ class KeymapManager:
 
             shortcut_keys.append((keymap, keymap_item))
 
-        cls.__shortcut_keys += shortcut_keys
+        self.__shortcut_keys += shortcut_keys
 
         return shortcut_keys
 
-    @classmethod
-    def delete(cls, subject: tuple[KeyMap, KeyMapItem] | type) -> bool:
+    def delete(self, subject: tuple[KeyMap, KeyMapItem] | type) -> bool:
         """Delete the keymap.
 
         Args:
@@ -93,26 +94,22 @@ class KeymapManager:
         if type(subject) == tuple:
             try:
                 subject[0].keymap_items.remove(subject[1])
-                cls.__shortcut_keys.remove(subject)
+                self.__shortcut_keys.remove(subject)
                 return True
             except ValueError:
                 return False
         else:
             is_deleted = False
-            for keymap, keymap_item in cls.__shortcut_keys:
+            for keymap, keymap_item in self.__shortcut_keys:
                 if not keymap_item.idname == subject.bl_idname: continue
                 keymap.keymap_items.remove(keymap_item)
                 is_deleted = True
             return is_deleted
 
-    @classmethod
-    def unregister(cls) -> None:
+    def unregister(self) -> None:
         """Delete all keymaps registered in this class."""
 
-        for kms in cls.__shortcut_keys:
-            cls.delete(kms)
+        for kms in self.__shortcut_keys:
+            self.delete(kms)
 
-        cls.__shortcut_keys.clear()
-
-
-    __shortcut_keys: List[tuple[KeyMap, KeyMapItem]] = []
+        self.__shortcut_keys.clear()

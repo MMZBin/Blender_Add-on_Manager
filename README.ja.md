@@ -57,8 +57,8 @@ def unregister(): addon.unregister()
 
 from bpy.types import Operator
 
-#ショートカットキーを登録するための`Key`データクラスと`keymapManagerクラスをインポートする`
-from ..manager.core.keymap_manager import Key, KeymapManager
+#ショートカットキーを登録するための`Key`データクラスをインポートする`
+from ..manager.core.keymap_manager import Key
 
 class HOGE_OT_Sample(Operator):
     bl_idname = "hoge.sample_operator"
@@ -70,8 +70,8 @@ class HOGE_OT_Sample(Operator):
 
         return {"FINISHED"}
 
-def register():
-    KeymapManager.add(Key(HOGE_OT_Sample, 'F1')) #F1キーが押されたときに'HOGE_OT_Sample'オペレーターが実行されるように設定する
+def register(manager): #'manager'引数はなくても良いです。
+    manager.keymap.add(Key(HOGE_OT_Sample, 'F1')) #F1キーが押されたときに'HOGE_OT_Sample'オペレーターが実行されるように設定する
 ```
 
 
@@ -85,13 +85,13 @@ def register():
 - [`priority`](#proc_loaderpy)デコレータを使うことで特定のクラスの読み込み順を制御することができます。
     - 例: `@priority(42)`
 - [`KeymapManager`](#keymap_managerpy)クラスを使用することでショートカットキーを登録することができます。
-    - 例: `KeymapManager.add(Key(HOGE_OT_YourOperator, 'A'))`
+    - 例: `manager.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
 - [`PropertiesManager`](#properties_managerpy)クラスを使用することでプロパティグループを登録・参照・解除することができます。(初期の構成では`AddonManager`クラスの`addon_name`引数が必要になります。)
     - 例
-        - プロパティの登録: `PropertiesManager.add(Scene, [("your_properties", YourPropertyGroupClass)])`
+        - プロパティの登録: `manager.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
         - プロパティの参照:
         ```
-            prop = PropertiesManager.get(bpy.context.scene, "your_properties") #プロパティの取得
+            prop = manager.property.get(bpy.context.scene, "your_properties") #プロパティの取得
             value = prop.get('your_attribute') #プロパティの属性の取得
             prop.set('your_attribute', 'Hello, world!') #プロパティの値を設定
         ```
@@ -102,7 +102,7 @@ def register():
         - 無効にすると、各ディレクトリ直下に`debug`ディレクトリが存在する場合、その中にあるモジュールが無視されます。
         - 有効にすると`debug`ディレクトリ内のモジュールが読み込まれ、アドオンの再読み込み機能([`reload()`](#addon_managerpy)メソッド)が使えるようになります。
 
-- 読み込み対象の各モジュールにregister()関数やunregister()関数がある場合、アドオンの登録・解除の際に呼び出されます。
+- 読み込み対象の各モジュールに`register()`関数や`unregister()`関数がある場合、アドオンの登録・解除の際に呼び出されます。
 - Blender標準形式の[翻訳テーブル](#addon_managerpy)を使用して多言語に対応させることができます。
 - [`constants.py`](#constantspy)にオペレーターの戻り値やモード名などいくつかの定数が用意されているため、入力の手間とタイプミスを減らすことができます。
 - `DrawText`クラスを使ってテキストの描画を簡素化できます。(ドキュメント未作成)
@@ -129,6 +129,9 @@ def register():
 ## addon_manager.py
 - __AddonManager__ クラス
   - アドオンの登録を行う中心的なクラスです。
+  - 基本的に一つのアドオンにつき一つのインスタンスが生成され、各機能を使用する際はこのクラスのインスタンスを介します。
+  - アドオンのクラスに`set_manager(manager)`クラスメソッドが定義されている場合、登録時に対応するインスタンスが渡されます。([`PropertiesManager`](#properties_managerpy)の例を参照してください。)
+  - 各モジュールの`register()`関数や`unregister()`関数が`manager`という名前のひとつの引数を取る場合、対応するインスタンスが渡されます。
     - **`__init__(path, target_dirs, local_symbols, addon_name, translation_table, cat_name, is_debug_mode)` メソッド**
         - 引数
             - `path`: アドオンフォルダへのパス(通常は`__init__.py`ファイルの`__file__`変数)
@@ -141,6 +144,12 @@ def register():
                 - `False`を指定すると`target_dirs`で指定したディレクトリの直下にある`debug`フォルダが無視されるようになります。
                 - `True`を指定すると`reload()`メソッドが使えるようになります。
     - `__init__.py`ファイルでインスタンスを生成し、`register()`メソッドと`unregister()`メソッドを同名のグローバル関数でラップしてください。
+
+    **`property`プロパティ**
+    - インスタンスに紐づけられた`PropertiesManager`インスタンスを返します。
+
+    **`keymap`プロパティ**
+    - インスタンスに紐づけられた`KeymapManager`インスタンスを返します。
 
     **`reload()`メソッド**
     - Blenderの`script.reload`オペレータが実行された際に、アドオン全体を再読込します。
@@ -195,7 +204,6 @@ def register():
 
 - __KeymapManager__ クラス
     - ショートカットキーを登録します。
-    - 静的クラスです。
 
     **`add(keys, name, space_type, region_type, modal, tool) -> List[tuple[KeyMap, KeyMapItem]]`メソッド**
 
@@ -214,20 +222,20 @@ def register():
         - `modal`: モーダルモードかを指定します。(デフォルトは`False`)
         - `tool`: ツールモードかを指定します。(デフォルトは`False`)
 
-    - 例: `KeymapManager.add(Key(HOGE_OT_YourOperator, 'A'))`
+    - 例: `manager.keymap.add(Key(HOGE_OT_YourOperator, 'A'))`
 
     **`delete(subject) -> bool`メソッド**
     - キーマップとキーマップアイテムのタプルまたはショートカットキーが登録されているオペレータークラスを受け取り、ショートカットキーを削除します。
     - 正しく削除されたら`True`、存在しない値を指定すると`False`が返ります。
 
-    - 例: `KeymapManager.delete(kms)`
+    - 例: `manager.keymap.delete(kms)`
 
     **`unregister()`メソッド**
 
     - すべてのショートカットキーを削除します。
     - AddonManagerクラスのunregister()メソッド内で自動的に呼び出されるため、通常は明示的に呼び出す必要はありません。
 
-    - 例: `KeymapManager.unregister()`
+    - 例: `manager.keymap.unregister()`
 
 ## properties_manager.py
 - __Property__ クラス
@@ -253,7 +261,6 @@ def register():
                 - `value`: 設定する値
 
 - __PropertiesManager__ クラス
-    - 静的クラスです。
     - プロパティグループ(`bpy.types.PropertyGroup`を継承しているクラス)の登録・解除・参照を行います。
     - `disable`デコレータが着いているクラスは無視されます。
     - 他のアドオンとの名前の衝突を避けるため、自動でプロパティ名に接頭辞を追加します。
@@ -269,7 +276,7 @@ def register():
                 - `prop_type`: プロパティを追加する対象のクラスを指定します。
                 - `properties`: `(プロパティ名, 登録するオペレーター)`の形式のタプルもしくはタプルのリストを受け取ります。
             - 戻り値: 追加したプロパティ
-            - 例: `PropertiesManager.add(Scene, [("your_properties", YourPropertyGroupClass)])`
+            - 例: `manager.property.add(Scene, [("your_properties", YourPropertyGroupClass)])`
     - **`get_prop(context, attr, is_mangling) -> Any` メソッド**
         - プロパティを取得します。
         - 指定した名前のプロパティが存在しない場合は`ValueError`が発生します。
@@ -280,24 +287,25 @@ def register():
                 - `is_mangling`(オプション): `attr`引数に規定の接頭辞がない場合の名前の修正を有効にするかを指定します。(デフォルトは`True`)
             - 戻り値
                 - 取得したプロパティ
-            - 例: `prop = PropertiesManager.get(bpy.context.scene, "your_properties")`
+            - 例: `prop = manager.property.get(bpy.context.scene, "your_properties")`
     - **`delete(prop_name) -> bool` メソッド**
         - 指定した名前のプロパティを削除します。
         - プロパティが存在すれば`True`、存在しなければ`False`を返します
             - 引数: `prop_name`: 削除したいプロパティ名
-        - 例: - 例: `PropertiesManager.delete("your_properties")`
+        - 例: - 例: `manager.property.delete("your_properties")`
     - **`unregister()` メソッド**
         - 登録されているすべてのプロパティを削除します。
         - 通常は`AddonManager`によって自動的に呼び出されるため、明示的に呼び出す必要はありません。
     - 例
         - プロパティを登録する
         ```
-        from ..manager.core.properties_manager import PropertiesManager as pm
 
         from bpy.types import PropertyGroup
         from bpy.props import BoolProperty
 
         from bpy.types import Scene
+
+        from ..manager.core.addon_manager import AddonManager
 
         class Hoge_Properties(PropertyGroup):
             bl_idname = "Hoge_Properties"
@@ -305,15 +313,14 @@ def register():
 
             fuga: BoolProperty(name="piyo", default=False)
 
-        def register() -> None:
-            pm.add(Scene, ("hoge", Hoge_Properties))
+        def register(manager: AddonManager) -> None:
+            manager.property.add(Scene, ("hoge", Hoge_Properties))
 
         ```
         - プロパティを参照する
         ```
         from bpy.types import Panel, Context, Scene
-
-        from ..manager.core.properties_manager import PropertiesManager as pm
+        from ..manager.core.addon_manager import AddonManager
 
         class MMZ_PT_Prop(Panel):
             bl_label = "Property Test"
@@ -321,8 +328,13 @@ def register():
             bl_region_type = "UI"
 
             def draw(self, context: Context):
-                prop = pm.get_prop(context.scene, "hoge")
+                prop = self.__manager.property.get_prop(context.scene, "hoge")
                 self.layout.label(text= f"fuga = {prop.get('fuga')}")
+
+            #アドオンマネージャーを取得する
+            @classmethod
+            def set_manager(cls, manager: AddonManager) -> None:
+                cls.__manager = manager
         ```
 
 ## proc_loader.py
