@@ -107,11 +107,10 @@ class AddonManager:
 
         if not hasattr(mdl, identifier): return
 
-        params = signature(getattr(mdl, identifier)).parameters
-        if 'manager' in params and len(params) == 1:
+        if len(signature(getattr(mdl, identifier)).parameters) == 0:
+            getattr(mdl, identifier)()
+        else:
             getattr(mdl, identifier)(self)
-        elif len(params) == 0: getattr(mdl, identifier)()
-        else: raise TypeError(f'The signature of the "{identifier}" function in the "{mdl}" module is invalid.')
 
     def __load(self, path: str, target_dirs: List[str], cat_name: str | None) -> None:
         self.__modules, self.__classes = ProcLoader(path, is_debug_mode=self.__is_debug_mode).load(target_dirs, cat_name)
