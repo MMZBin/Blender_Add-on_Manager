@@ -76,6 +76,7 @@ def register(manager): #The ‘manager’ argument is optional.
 ## Features
 - Registers and unregisters all addon classes within a specified directory, including subdirectories.
 - Define a list named `ignore` in the `__init__.py` of each directory to specify module names that should be ignored.
+  - Similarly, by listing the modules (not the module names, but the modules themselves) in a list named `priority`, the modules will be registered in the order of the list. (Each module must not have a global attribute named `ADDON_MODULE_PRIORITY`.)
     - The module path is relative to the directory where the `__init__.py` file defining the list is located.
         - Example (in the `__init__.py` file of the `opera`tors`folder`): `ignore = ['your_operator']`
 - Use the [`disable`](#proc_loaderpy) decorator to ignore specific classes.
@@ -128,8 +129,8 @@ In this readme, the sample code is written with the following directory structur
 ## addon_manager.py
 - __AddonManager__ class
   - Basically, one instance is generated per addon, and this class instance is used when using each function.
-  - If an addon class defines a class method `set_manager(manager)`, the corresponding instance is passed during registration. (See the [`PropertiesManager`](#properties_managerpy) example.)
-  - If the `register()` or `unregister()` function of each module takes an argument named `manager`, the corresponding instance is passed.
+    - If a class method `set_manager()` is defined in the add-on class that takes one argument, the corresponding instance will be passed during registration. (See the example in [`PropertiesManager`](#properties_managerpy).)
+    - If the `register()` or `unregister()` functions of each module take one argument, the corresponding instance will be passed.
     - **`__init__(path, target_dirs, local_symbols, addon_name, translation_table, cat_name, is_debug_mode)` method**
         - Arguments:
             - `path`: The path to the addon folder (usually the `__file__` variable in the `__init__.py` file).

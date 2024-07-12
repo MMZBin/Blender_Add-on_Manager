@@ -4,6 +4,9 @@
 # pyright: reportAttributeAccessIssue = false
 # pyright: reportUnknownMemberType = false
 
+#TODO: Optimize the loading process.
+
+from collections import defaultdict
 from typing import Callable, List, Dict
 from types import ModuleType
 
@@ -20,15 +23,15 @@ from bpy import types
 
 #このデコレータが付いている場合、そのクラスは無視されます。
 def disable(cls: type) -> type:
-    if hasattr(cls, 'addon_proc_is_disabled'): raise DuplicateAttributeError("The 'addon_proc_is_disabled' attribute is used in the 'disable' decorator.")
-    cls.addon_proc_is_disabled = True
+    if hasattr(cls, '_addon_proc_is_disabled'): raise DuplicateAttributeError("The '_addon_proc_is_disabled' attribute is used in the 'disable' decorator.")
+    cls._addon_proc_is_disabled = True
     return cls
 
 #このデコレータで読み込みの優先順位を付けられます。付けられなかった場合は最後になります。
 def priority(pr: int) -> Callable[[type], type]:
     def _priority(cls: type) -> type:
-        if (hasattr(cls, 'addon_proc_priority')): raise DuplicateAttributeError("The 'addon_proc_priority' attribute is used in the 'priority' decorator.")
-        cls.addon_proc_priority = pr
+        if (hasattr(cls, '_addon_proc_priority')): raise DuplicateAttributeError("The '_addon_proc_priority' attribute is used in the 'priority' decorator.")
+        cls._addon_proc_priority = pr
         return cls
     return _priority
 
@@ -77,7 +80,7 @@ class ProcLoader:
 
     @staticmethod
     def is_disabled(clazz: type) -> bool:
-        """Check for the presence and value of 'addon_proc_is_disabled' attribute in the target class
+        """Check for the presence and value of '_addon_proc_is_disabled' attribute in the target class
 
         Args:
             clazz (type): Target class
@@ -85,7 +88,7 @@ class ProcLoader:
         Returns:
             bool: Whether the target class is marked as disabled
         """
-        return hasattr(clazz, 'addon_proc_is_disabled') and clazz.addon_proc_is_disabled == True # type: ignore
+        return hasattr(clazz, '_addon_proc_is_disabled') and clazz._addon_proc_is_disabled == True # type: ignore
 
     #モジュールとクラスを取得する
     def load(self, dirs: List[str], cat_name: str | None = None) -> List[List[ModuleType] | List[type]]:
@@ -128,9 +131,14 @@ class ProcLoader:
                 if basename(path) == '__init__.py':
                     #無視リストを読み込む
                     init = import_module(mdl_path)
-                    if not hasattr(init, 'ignore'): continue
-                    for mdl in init.ignore:
-                        ignore_modules.append(f"{splitext(mdl_path)[0]}.{mdl}") #無視リストを__init__.pyが所属するモジュールからのパスに変換する
+                    if hasattr(init, 'ignore'):
+                        for mdl in init.ignore:
+                            ignore_modules.append(f"{splitext(mdl_path)[0]}.{mdl}") #無視リストを__init__.pyが所属するモジュールからのパスに変換する
+                    if hasattr(init, 'priority'):
+                        for i, mdl in enumerate(init.priority):
+                            if hasattr(mdl, 'ADDON_MODULE_PRIORITY'): raise DuplicateAttributeError(gen_msg(ProcLoader, MsgType.CRITICAL, f'The {mdl} modules must not have an attribute called "ADDON_MODULE_PRIORITY".'))
+                            mdl.ADDON_MODULE_PRIORITY = i
+
                 else:
                     modules.append(mdl_path)
 
@@ -169,9 +177,43 @@ class ProcLoader:
         Returns:
             List[type]: Loaded classes
         """
-        cls_priority: Dict[type, int] = {}
+        import numpy as np
+
+        def sort_priority(index: int) -> Callable[..., int | float]:
+            return lambda item: float('inf') if item[index] < 0 else item[index] # type: ignore
+
+        class_priority: Dict[type, tuple[int, int]] = self.__load_addon_classes(modules)
+
+        #モジュールの優先度をキー、クラスとクラスの優先度のリストを値とする辞書
+        sorted_by_mdl: Dict[int, List[tuple[type, int]]] = defaultdict(list)
+
+        #モジュールの優先度ごとにクラスを分類する
+        for cls, pr in class_priority.items():
+            mdl = sorted_by_mdl[pr[0]]
+
+            #最後の要素と今回の要素を比較し、今回の要素のほうが優先度が高ければ前に挿入する
+            if len(mdl) > 1 and mdl[-1][1] < pr[1]:
+                mdl.insert(-1, (cls, pr[1]))
+            else:
+                mdl.append((cls, pr[1]))
+
+        #辞書をモジュールの優先度ごとに並び替えたリストを作り、クラスを追加する
+        sorted_by_cls: List[type] = []
+        for clazz in [item[1] for item in sorted(sorted_by_mdl.items(), key=sort_priority(0))]:
+            sorted_by_cls.extend(np.array(clazz)[:, 0])
+
+        return self.__add_attribute(sorted_by_cls, cat_name) #足りない属性を追加して返す
+
+    def __load_addon_classes(self, modules: List[ModuleType]) -> Dict[type, tuple[int, int]]:
+        class_priority: Dict[type, tuple[int, int]] = {}
 
         for mdl in modules:
+            mdl_priority: int = 0
+            if hasattr(mdl, 'ADDON_MODULE_PRIORITY') and type(getattr(mdl, 'ADDON_MODULE_PRIORITY')) == int:
+                mdl_priority = getattr(mdl, 'ADDON_MODULE_PRIORITY')
+            else:
+                mdl_priority = -1
+
             for clazz in getmembers(mdl, isclass):
                 clazz = clazz[1]
                 #対象のクラスがアドオンのクラスかつ無効でない場合追加する
@@ -179,15 +221,12 @@ class ProcLoader:
                 if self.is_disabled(clazz): continue
 
                 #優先順位とクラスを辞書に追加する
-                if hasattr(clazz, 'addon_proc_priority'): cls_priority[clazz] = clazz.addon_proc_priority
-                else: cls_priority[clazz] = -1
+                if hasattr(clazz, '_addon_proc_priority'): class_priority[clazz] = (mdl_priority, clazz._addon_proc_priority)
+                else: class_priority[clazz] = (mdl_priority, -1)
 
-        #優先順位を元にソートする(数が小さいほど先、-1(0以下)は最後)
-        sorted_classes = sorted(cls_priority.items(), key=lambda item: float('inf') if item[1] < 0 else item[1])
+        return class_priority
 
-        return self.__add_attribute(sorted_classes, cat_name)
-
-    def __add_attribute(self, classes: List[tuple[type, int]], cat_name: str | None) -> List[type]:
+    def __add_attribute(self, classes: List[type], cat_name: str | None) -> List[type]:
         """Add necessary attributes to the add-on
 
         Args:
@@ -198,8 +237,7 @@ class ProcLoader:
             List[type]: Class with added elements
         """
         for cls in classes:
-            cls = cls[0]
             if not hasattr(cls, 'bl_idname'): cls.bl_idname = cls.__name__
             if cat_name and issubclass(cls, types.Panel) and not hasattr(cls, 'bl_category'): cls.bl_category = cat_name # type: ignore
 
-        return [item[0] for item in classes]
+        return classes

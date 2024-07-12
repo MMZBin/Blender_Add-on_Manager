@@ -78,6 +78,7 @@ def register(manager): #'manager'引数はなくても良いです。
 ## 機能
 - サブディレクトリを含めて、指定したディレクトリ内のすべてのアドオンのクラスを登録・解除します。
 - 各ディレクトリの`__init__.py`に`ignore`という名前のリストを定義し、モジュール名を記述することでそのモジュールを無視します。
+    - 同じく、`priority`という名前のリストにモジュール(モジュール名ではなくモジュールそのもの)を記述するとリストの順番にモジュールが登録されます。(各モジュールに`ADDON_MODULE_PRIORITY`という名前のグローバル属性が存在していない必要があります。)
     - モジュールのパスはリストが定義されている`__init__.py`ファイルが存在するディレクトリから見た相対パスです。
         - 例(`operators`フォルダ内の`__init__.py`ファイルの場合): `ignore = ['your_operator']`
 - [`disable`](#proc_loaderpy)デコレータを使うことで特定のクラスを無視することができます。
@@ -130,8 +131,8 @@ def register(manager): #'manager'引数はなくても良いです。
 - __AddonManager__ クラス
   - アドオンの登録を行う中心的なクラスです。
   - 基本的に一つのアドオンにつき一つのインスタンスが生成され、各機能を使用する際はこのクラスのインスタンスを介します。
-  - アドオンのクラスに`set_manager(manager)`クラスメソッドが定義されている場合、登録時に対応するインスタンスが渡されます。([`PropertiesManager`](#properties_managerpy)の例を参照してください。)
-  - 各モジュールの`register()`関数や`unregister()`関数が`manager`という名前のひとつの引数を取る場合、対応するインスタンスが渡されます。
+  - アドオンのクラスに一つの引数を取る`set_manager()`クラスメソッドが定義されている場合、登録時に対応するインスタンスが渡されます。([`PropertiesManager`](#properties_managerpy)の例を参照してください。)
+  - 各モジュールの`register()`関数や`unregister()`関数がひとつの引数を取る場合、対応するインスタンスが渡されます。
     - **`__init__(path, target_dirs, local_symbols, addon_name, translation_table, cat_name, is_debug_mode)` メソッド**
         - 引数
             - `path`: アドオンフォルダへのパス(通常は`__init__.py`ファイルの`__file__`変数)
@@ -343,7 +344,7 @@ def register(manager): #'manager'引数はなくても良いです。
 
 - __disable__ デコレータ
     - このデコレータを付けたクラスはProcLoaderによって無視され、読み込まれません。
-    - 対象のクラスに`addon_proc_disabled`属性が存在していない必要があります。
+    - 対象のクラスに`_addon_proc_disabled`属性が存在していない必要があります。
     - 例
         ```
         @disable
@@ -354,7 +355,7 @@ def register(manager): #'manager'引数はなくても良いです。
     - 数値は0以上で、小さいほど先に読み込まれます。
     - このデコレータを付けないか0以下の値を指定すると最後に読み込まれます。
     - このデコレータを付けないか同じ数値が指定された場合の読み込み順は保証されません。
-    - 対象のクラスに`addon_proc_priority`属性が存在していない必要があります。
+    - 対象のクラスに`_addon_proc_priority`属性が存在していない必要があります。
     - 例
         ```
         @priority(42)
