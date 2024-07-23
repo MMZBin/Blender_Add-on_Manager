@@ -19,18 +19,22 @@ class AddonManager:
     from types import ModuleType, MethodType
 
     def __init__(self, file: str, local_symbols: dict[str, Any],
+                 dir_priorities: List[str]=[], exclude_dirs: List[str] = [], exclude_when_not_debugging: List[str]=[],
                  translation_table: Dict[str, Dict[tuple[Any, Any], str]] | None = None, cat_name: str | None = None,
-                 dir_priorities: List[str]=[], exclude_dirs: List[str] = [], exclude_when_not_debugging: List[str]=[], is_debug_mode: bool = False) -> None:
+                 is_debug_mode: bool = False) -> None:
         """Initialize
 
         Args:
-            file (str): Absolute path to the add-on's __init__.py file.
+            file (str): Path to the add-on's __init__.py file.
             local_symbols (dict[str, Any]): Local symbols in the add-on's __init__.py file.
-            translation_table (Dict[str, Dict[tuple[Any, Any], str]] | None, optional): translation dictionary. Defaults to None.
-            cat_name (str | None, optional): Default category name for the panel. Defaults to None.
+            dir_priorities (List[str], optional): Order of root folders to be read. Defaults to [].
             exclude_dirs (List[str], optional): Folders not loaded. Defaults to [].
+            exclude_when_not_debugging (List[str], optional): Folders not loaded when not in debug mode. Defaults to [].
+            translation_table (Dict[str, Dict[tuple[Any, Any], str]] | None, optional): translation dictionary. Defaults to None.
+            cat_name (str | None, optional): Specify the default category name for the panel. Defaults to None.
             is_debug_mode (bool, optional): With or without debug mode. Defaults to False.
         """
+
 
         from os.path import basename, dirname
 

@@ -92,34 +92,54 @@ class ProcLoader:
         return hasattr(clazz, '_addon_proc_is_disabled') and clazz._addon_proc_is_disabled == True # type: ignore
 
     def load(self, dir_priorities: List[str]=[], exclude_modules: List[str]=[], exclude_when_not_debugging: List[str]=[], cat_name: str | None = None) -> List[tuple[ModuleType, List[type]]]:
-        """Loading classes and modules
+        """Load modules and add-on classes.
 
         Args:
-            exclude_dirs (List[str], optional): Folders not loaded. Defaults to [].
-            exclude_when_not_debugging (List[str], optional): Folder to exclude when not in debug mode. Defaults to [].
-            cat_name (str | None, optional): Default category name for the panel. Defaults to None.
+            dir_priorities (List[str], optional): Specifies the order in which root-level directories are read.. Defaults to [].
+            exclude_modules (List[str], optional): Specify folders not to be read. Defaults to [].
+            exclude_when_not_debugging (List[str], optional): Specify folders to exclude when not in debug mode. Defaults to [].
+            cat_name (str | None, optional): Specify the default category name for the panel. Defaults to None.
 
         Returns:
-            List[tuple[ModuleType, List[type]]]: A sorted list of loaded modules and the classes in them.
+            List[tuple[ModuleType, List[type]]]: List of modules and add-on classes.
         """
-        from glob import glob
+        from os import walk
+        from os.path import join
 
         exclude_modules += ['manager']
         if not self.__is_debug_mode: exclude_modules += exclude_when_not_debugging
 
         exclude_modules = [(self.__addon_name + '.' + dir) for dir in exclude_modules] # 無視するモジュールをモジュールパスの形にする
-        dir_priorities = [(self.__addon_name + '.' + dir) for dir in dir_priorities]
 
-        modules = [import_module(splitext(file.lstrip(self.__path + os.sep).replace(os.sep, '.'))[0]) for file in glob(self.__path + os.sep + self.__addon_name + f'{os.sep}**{os.sep}*.py', recursive=True)]
+        modules_path_with_pr: dict[str, int] = {}
+
+        for root, _, files in walk(join(self.__path, self.__addon_name)):
+            if basename(root).startswith('.'): continue
+
+            root_mdl_path = root.lstrip(self.__path + os.sep).replace(os.sep, '.')
+
+            priority = -1
+
+            for i, path in enumerate(dir_priorities):
+                if root_mdl_path.startswith(path):
+                    priority = i
+
+            root_mdl_path += '.'
+
+            for file in [f for f in files if f.endswith('.py')]:
+                mdl_path = root_mdl_path + splitext(file)[0]
+
+                modules_path_with_pr[mdl_path] = priority
+
+        modules_path = [mdl[0] for mdl in sorted(modules_path_with_pr.items(), key=lambda path: float('inf') if path[1] < 0 else path[1])]
+
+        modules = list(map(import_module, modules_path))
         if not self.__is_debug_mode:
             modules = [mdl for mdl in modules if not mdl.__package__.endswith('debug')] # type: ignore
 
         exclude_modules += self.__load_init_attr(modules)
 
-        for e in modules:
-            print(e.__package__)
-
-        modules = [mdl for mdl in modules if mdl.__package__ and not mdl.__package__.startswith(tuple(exclude_modules))]
+        modules = [mdl for mdl in modules if mdl.__file__ and not self.__abs_to_mdl_path(mdl.__file__ + '.').startswith(tuple(exclude_modules))] #無効なモジュールを除外する
 
         modules_and_classes = self.__load_classes(modules, cat_name)
 
@@ -138,13 +158,18 @@ class ProcLoader:
             if hasattr(init, 'disable'):
                 if not issubclass(type(init.disable), Iterable): raise TypeError(gen_msg(ProcLoader, MsgType.CRITICAL, f'Attribute "disable" of module "{init}" is not iterable.'))
                 for mdl in init.disable:
-                    disabled_modules.append(package_path + mdl)
+                    disabled_modules.append(package_path + mdl + '.')
 
-            self.__set_module_priority()(init)
+            self.__set_module_priority(init)
 
         return disabled_modules
 
+    def __abs_to_mdl_path(self, path: str) -> str:
+        return path.lstrip(self.__path).replace(os.sep, '.')
+
+
     def __load_classes(self, modules: List[ModuleType], cat_name: str | None) -> List[tuple[ModuleType, List[type]]]:
+        """Reads the add-on class."""
         from inspect import getmembers, isclass
 
         modules_and_classes: List[tuple[ModuleType, List[type]]] = []
@@ -157,7 +182,8 @@ class ProcLoader:
 
         return modules_and_classes
 
-    def __set_module_priority(self) -> Callable[[ModuleType], None]:
+    def __set_module_priority(self, init_module: ModuleType) -> None:
+        """Set module priority recursively."""
         from inspect import getmembers, ismodule
         priority_count: int = 0
 
@@ -165,12 +191,19 @@ class ProcLoader:
             nonlocal priority_count
 
             for mdl in getmembers(package, ismodule):
-                if hasattr(mdl[1], '__path__'): set_priority(mdl[1])
+                if hasattr(mdl[1], '__path__'):
+                    try:
+                        _set_module_priority(import_module(mdl[1].__file__.lstrip(self.__path).replace(os.sep, '.') + '.' + '__init__'))
+                    except ModuleNotFoundError:
+                        set_priority(mdl[1])
                 mdl[1].ADDON_MODULE_PRIORITY = priority_count
                 priority_count += 1
 
         def _set_module_priority(init: ModuleType) -> None:
             nonlocal priority_count
+
+            if getattr(init, 'ADDON_INIT_LOADED', False): return
+            init.ADDON_INIT_LOADED = True
 
             if not hasattr(init, 'priority'): return
             if not issubclass(type(init.priority), Iterable): raise TypeError(gen_msg(ProcLoader, MsgType.CRITICAL, f'Attribute "priority" of module "{init}" is not iterable.'))
@@ -181,20 +214,24 @@ class ProcLoader:
             for mdl_path in init.priority:
                 priority_path = package_path + mdl_path
                 module = import_module(priority_path)
+                #対象がパッケージだったら__init__モジュールから優先度を設定する
                 if hasattr(module, '__path__'):
                     try:
                         _set_module_priority(import_module(priority_path + '.' + '__init__'))
                     except ModuleNotFoundError:
+                        #__init__モジュールがなければ登録順に優先度を設定する
                         set_priority(module)
                 else:
                     module.ADDON_MODULE_PRIORITY = priority_count
 
                 priority_count += 1
 
-        return _set_module_priority
+        _set_module_priority(init_module)
+
+        return
 
     def __add_attribute(self, cls: type, cat_name: str | None) -> type:
-        """Add necessary attributes to the add-on
+        """Add necessary attributes to the add-on.
 
         Args:
             classes (type): Target class
