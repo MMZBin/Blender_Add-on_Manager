@@ -18,28 +18,35 @@ class AddonManager:
     from typing import List, Any, Dict
     from types import ModuleType, MethodType
 
-    def __init__(self, path: str, target_dirs: List[str], local_symbols: dict[str, Any], addon_name: str | None = None,
-                 translation_table: Dict[str, Dict[tuple[Any, Any], str]] | None = None, cat_name: str | None = None, is_debug_mode: bool = False) -> None:
+    def __init__(self, file: str, local_symbols: dict[str, Any],
+                 dir_priorities: List[str]=[], exclude_dirs: List[str] = [], exclude_when_not_debugging: List[str]=[],
+                 translation_table: Dict[str, Dict[tuple[Any, Any], str]] | None = None, cat_name: str | None = None,
+                 is_debug_mode: bool = False) -> None:
         """Initialize
 
         Args:
-            path (str): Path to the add-on folder or '__init__.py' file.
-            target_dirs (List[str]): The name of the directory to be read.
-            local_symbols (dict[str, Any]): The symbol table of the addon's file
-            addon_name (str | None, optional): Add-on name. Required when using translation tables or properties. Defaults to None.
-            translation_table (Dict[str, Dict[tuple[Any, Any], str]] | None, optional): Standard format translation table of Blender. Defaults to None.
-            cat_name (str | None, optional): 'bl_category' attribute that is assigned by default to subclasses of 'bpy.types.Panel'. Defaults to None.
-            is_debug_mode (bool, optional): Presence or absence of debug mode. Defaults to False.
+            file (str): Path to the add-on's __init__.py file.
+            local_symbols (dict[str, Any]): Local symbols in the add-on's __init__.py file.
+            dir_priorities (List[str], optional): Order of root folders to be read. Defaults to [].
+            exclude_dirs (List[str], optional): Folders not loaded. Defaults to [].
+            exclude_when_not_debugging (List[str], optional): Folders not loaded when not in debug mode. Defaults to [].
+            translation_table (Dict[str, Dict[tuple[Any, Any], str]] | None, optional): translation dictionary. Defaults to None.
+            cat_name (str | None, optional): Specify the default category name for the panel. Defaults to None.
+            is_debug_mode (bool, optional): With or without debug mode. Defaults to False.
         """
-        self.__addon_name = addon_name
+
+
+        from os.path import basename, dirname
+
+        self.__addon_name = basename(dirname(file))
         self.__is_debug_mode = is_debug_mode
         self.__is_initialized = '__addon_enabled__' in local_symbols
-        self.__load(path, target_dirs, cat_name)
-        self.__properties_manager = PropertiesManager(self.__addon_name if self.__addon_name is not None else "")
+        self.__load(file, cat_name, dir_priorities, exclude_dirs, exclude_when_not_debugging)
+        self.__properties_manager = PropertiesManager(self.__addon_name)
         self.__keymap_manager = KeymapManager()
         self.__translation_table = translation_table
 
-        self.reload(local_symbols, path, target_dirs, cat_name)
+        self.reload(file, cat_name, dir_priorities, exclude_dirs, exclude_when_not_debugging)
 
     @property
     def keymap(self) -> KeymapManager: return self.__keymap_manager
@@ -75,7 +82,7 @@ class AddonManager:
 
         self.__unregister_utils()
 
-    def reload(self, local_symbols: dict[str, Any], path: str, target_dirs: List[str], cat_name: str | None) -> None:
+    def reload(self, file: str, cat_name: str | None, dir_priorities: List[str], exclude_dirs: List[str], exclude_when_not_debugging: List[str]) -> None:
         """ Reload the add-on class when the 'script.reload' operator is called"""
         from importlib import reload, invalidate_caches
 
@@ -83,9 +90,8 @@ class AddonManager:
 
         for mdl in self.__modules:
             reload(mdl) # type: ignore
-
         invalidate_caches()
-        self.__load(path, target_dirs, cat_name)
+        self.__load(file, cat_name, dir_priorities, exclude_dirs, exclude_when_not_debugging)
 
     def __call(self, identifier: str) -> None:
         """Invoke the function specified by 'identifier' for all add-on modules.
@@ -112,8 +118,10 @@ class AddonManager:
         else:
             getattr(mdl, identifier)(self)
 
-    def __load(self, path: str, target_dirs: List[str], cat_name: str | None) -> None:
-        self.__modules, self.__classes = ProcLoader(path, is_debug_mode=self.__is_debug_mode).load(target_dirs, cat_name)
+    def __load(self, file: str, cat_name: str | None, dir_priorities: List[str], exclude_dirs: List[str], exclude_when_not_debugging: List[str]) -> None:
+        modules = ProcLoader(file, is_debug_mode=self.__is_debug_mode).load(dir_priorities, exclude_dirs, exclude_when_not_debugging, cat_name)
+        self.__modules = [mdl[0] for mdl in modules]
+        self.__classes = [cls for cls_list in [mdl[1] for mdl in modules] for cls in cls_list]
 
     def __unregister_utils(self) -> None:
         self.__call('unregister')

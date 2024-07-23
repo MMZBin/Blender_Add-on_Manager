@@ -6,14 +6,22 @@
 
 #TODO: Optimize the loading process.
 
-from collections import defaultdict
-from typing import Callable, List, Dict
+'''
+    モジュールの階層の深さと優先度を元にソートする
+    1.最も浅い__init__.pyで定義された優先度とその__init__.pyファイルの深さを記録する
+    2.クラスをモジュール内の優先度順にソート
+    3.モジュールを優先度順にソート
+    4.モジュールを深さ順にソート
+'''
+
+#パッケージの優先度とモジュールの優先度を分ける
+
+from typing import Callable, Iterable, List, Tuple
 from types import ModuleType
 
 import os
-from os.path import dirname, basename, join, splitext, isfile
+from os.path import dirname, basename, splitext, isfile
 from importlib import import_module
-from inspect import getmembers, isclass
 import sys
 
 from .utils.gen_msg import MsgType, gen_msg
@@ -45,7 +53,7 @@ class ProcLoader:
         NotADirectoryError: Throws if the add-on module path is not a folder.
     """
 
-    DEFAULT_TARGET_CLASSES: List[type] = ( # type: ignore
+    DEFAULT_TARGET_CLASSES: List[type] = [
         types.Operator, types.Panel, types.Menu, types.Header, types.UIList, types.PropertyGroup, types.AddonPreferences, types.RenderEngine, types.Node, types.NodeSocket,
         types.NodeTree, types.Gizmo, types.GizmoGroup, types.Macro, types.OperatorFileListElement, types.OperatorProperties, types.Space, types.Region, types.KeyMap, types.KeyMapItem,
         types.RenderSettings, types.Scene, types.Object, types.Mesh, types.Curve, types.MetaBall, types.Text, types.Sound, types.WindowManager, types.Screen,
@@ -57,9 +65,9 @@ class ProcLoader:
         types.SpaceView3D, types.SpaceImageEditor, types.SpaceUVEditor, types.SpaceTextEditor, types.SpaceGraphEditor, types.SpaceNLA, types.SpaceFileBrowser, types.SpaceProperties, types.SpaceInfo, types.SpaceOutliner,
         types.SpaceSequenceEditor, types.SpaceClipEditor, types.SpaceNodeEditor, types.SpaceConsole, types.SpacePreferences, types.Event, types.Timer, types.AnimData, types.NlaStrip, types.NlaTrack, types.FModifier,
         types.FCurveSample, types.FCurveModifiers, types.CompositorNodeTree, types.ShaderNodeTree, types.TextureNodeTree, types.GeometryNodeTree, types.OperatorMacro
-    )
+    ]
 
-    def __init__(self, path: str, target_classes: List[type] | None = None, is_debug_mode: bool = False) -> None:
+    def __init__(self, path: str, target_classes: Tuple[type] | None = None, is_debug_mode: bool = False) -> None:
         """Initialize and add addon folder to module search path
 
         Args:
@@ -68,7 +76,7 @@ class ProcLoader:
             is_debug_mode (bool, optional): Presence of debug mode. Defaults to False.
         """
         root = dirname(path) if isfile(path) else path #指定されたパスがファイルであれば最後のフォルダまでのパスを取得する
-        self.__dir_name = basename(root) #アドオンのフォルダ名       例:addon_folder
+        self.__addon_name = basename(root) #アドオンのフォルダ名       例:addon_folder
         self.__path = dirname(root)      #アドオンフォルダまでのパス 例:path/to/blender/script/
         self.__is_debug_mode = is_debug_mode
 
@@ -80,164 +88,159 @@ class ProcLoader:
 
     @staticmethod
     def is_disabled(clazz: type) -> bool:
-        """Check for the presence and value of '_addon_proc_is_disabled' attribute in the target class
-
-        Args:
-            clazz (type): Target class
-
-        Returns:
-            bool: Whether the target class is marked as disabled
-        """
+        """Check for the presence and value of '_addon_proc_is_disabled' attribute in the target class."""
         return hasattr(clazz, '_addon_proc_is_disabled') and clazz._addon_proc_is_disabled == True # type: ignore
 
-    #モジュールとクラスを取得する
-    def load(self, dirs: List[str], cat_name: str | None = None) -> List[List[ModuleType] | List[type]]:
-        """Load addon's modules and classes
+    def load(self, dir_priorities: List[str]=[], exclude_modules: List[str]=[], exclude_when_not_debugging: List[str]=[], cat_name: str | None = None) -> List[tuple[ModuleType, List[type]]]:
+        """Load modules and add-on classes.
 
         Args:
-            dirs (List[str]): Directory to search
-            cat_name (str | None, optional): Default category name applied to the panel. Defaults to None.
+            dir_priorities (List[str], optional): Specifies the order in which root-level directories are read.. Defaults to [].
+            exclude_modules (List[str], optional): Specify folders not to be read. Defaults to [].
+            exclude_when_not_debugging (List[str], optional): Specify folders to exclude when not in debug mode. Defaults to [].
+            cat_name (str | None, optional): Specify the default category name for the panel. Defaults to None.
 
         Returns:
-            List[List[ModuleType] | List[type]]: Loaded modules and classes(Module in column 0, class in column 1)
+            List[tuple[ModuleType, List[type]]]: List of modules and add-on classes.
         """
-        modules = self.load_modules(self.load_files(dirs))
-        return [modules, self.load_classes(modules, cat_name)]
+        from os import walk
+        from os.path import join
 
-    #[アドオン名].[フォルダ名].[ファイル名]の形でモジュール名を取得する
-    def load_files(self, dirs: List[str]) -> List[str]:
-        """Get path of module to load
+        exclude_modules += ['manager']
+        if not self.__is_debug_mode: exclude_modules += exclude_when_not_debugging
 
-        Args:
-            dirs (List[str]): Directory to load from
+        exclude_modules = [(self.__addon_name + '.' + dir) for dir in exclude_modules] # 無視するモジュールをモジュールパスの形にする
 
-        Returns:
-            List[str]: Path of retrieved module
-        """
-        from pathlib import Path
+        modules_path_with_pr: dict[str, int] = {}
 
-        addon_path = join(self.__path, self.__dir_name) #アドオンへの絶対パス
+        for root, _, files in walk(join(self.__path, self.__addon_name)):
+            if basename(root).startswith('.'): continue
 
-        ignore_modules: List[str] = []
-        modules: List[str] = []
+            root_mdl_path = root.lstrip(self.__path + os.sep).replace(os.sep, '.')
 
-        for dir in dirs:
-            if not self.__is_debug_mode: ignore_modules.append(f"{self.__dir_name}.{dir}.debug")
+            priority = -1
 
-            #フォルダ内のすべての.pyファイルの絶対パスを取得する
-            for file in Path(join(addon_path, dir)).glob('**/*.py'):
-                path = str(file)
-                mdl_path = splitext(path.lstrip(f"{self.__path}{os.sep}").replace(os.sep, '.'))[0] #モジュールパス
-                if basename(path) == '__init__.py':
-                    #無視リストを読み込む
-                    init = import_module(mdl_path)
-                    if hasattr(init, 'ignore'):
-                        for mdl in init.ignore:
-                            ignore_modules.append(f"{splitext(mdl_path)[0]}.{mdl}") #無視リストを__init__.pyが所属するモジュールからのパスに変換する
-                    if hasattr(init, 'priority'):
-                        for i, mdl in enumerate(init.priority):
-                            if hasattr(mdl, 'ADDON_MODULE_PRIORITY'): raise DuplicateAttributeError(gen_msg(ProcLoader, MsgType.CRITICAL, f'The {mdl} modules must not have an attribute called "ADDON_MODULE_PRIORITY".'))
-                            mdl.ADDON_MODULE_PRIORITY = i
+            for i, path in enumerate(dir_priorities):
+                if root_mdl_path.startswith(path):
+                    priority = i
 
-                else:
-                    modules.append(mdl_path)
+            root_mdl_path += '.'
 
-        return [mdl for mdl in modules if not mdl.startswith(tuple(ignore_modules))] #無視リストにないモジュールを返す
+            for file in [f for f in files if f.endswith('.py')]:
+                mdl_path = root_mdl_path + splitext(file)[0]
+
+                modules_path_with_pr[mdl_path] = priority
+
+        modules_path = [mdl[0] for mdl in sorted(modules_path_with_pr.items(), key=lambda path: float('inf') if path[1] < 0 else path[1])]
+
+        modules = list(map(import_module, modules_path))
+        if not self.__is_debug_mode:
+            modules = [mdl for mdl in modules if not mdl.__package__.endswith('debug')] # type: ignore
+
+        exclude_modules += self.__load_init_attr(modules)
+
+        modules = [mdl for mdl in modules if mdl.__file__ and not self.__abs_to_mdl_path(mdl.__file__ + '.').startswith(tuple(exclude_modules))] #無効なモジュールを除外する
+
+        modules_and_classes = self.__load_classes(modules, cat_name)
+
+        return sorted(modules_and_classes, key=lambda mdl: float('inf') if getattr(mdl[0], 'ADDON_MODULE_PRIORITY', -1) == -1 else mdl[0].ADDON_MODULE_PRIORITY)
+
+    def __load_init_attr(self, modules: List[ModuleType]) -> List[str]:
+        disabled_modules: List[str] = []
+
+        for init in [mdl for mdl in modules if mdl.__file__ and mdl.__file__.endswith('__init__.py')]:
+            modules.remove(init)
+
+            if init.__package__ is None: continue
+
+            package_path = init.__package__ + '.'
+
+            if hasattr(init, 'disable'):
+                if not issubclass(type(init.disable), Iterable): raise TypeError(gen_msg(ProcLoader, MsgType.CRITICAL, f'Attribute "disable" of module "{init}" is not iterable.'))
+                for mdl in init.disable:
+                    disabled_modules.append(package_path + mdl + '.')
+
+            self.__set_module_priority(init)
+
+        return disabled_modules
+
+    def __abs_to_mdl_path(self, path: str) -> str:
+        return path.lstrip(self.__path).replace(os.sep, '.')
 
 
-    #モジュールをインポートする
-    @staticmethod
-    def load_modules(paths: List[str]) -> List[ModuleType]:
-        """Load a module based on its path
+    def __load_classes(self, modules: List[ModuleType], cat_name: str | None) -> List[tuple[ModuleType, List[type]]]:
+        """Reads the add-on class."""
+        from inspect import getmembers, isclass
 
-        Args:
-            paths (List[str]): Path to the module
-
-        Returns:
-            List[ModuleType]: Loaded module
-        """
-        modules: List[ModuleType] = []
-
-        for path in paths:
-            try:
-                modules.append(import_module(path))
-            except (ImportError, ModuleNotFoundError) as e:
-                print(gen_msg(ProcLoader, MsgType.ERROR, f'Failed to load "{path}" module. \n {e}'))
-
-        return modules
-
-    #モジュール内のクラスを取得する
-    def load_classes(self, modules: List[ModuleType], cat_name: str | None = None) -> List[type]:
-        """Retrieve addon class within a module
-
-        Args:
-            modules (List[ModuleType]): Target module
-            cat_name (str | None, optional): Default category name applied to the panel. Defaults to None.
-
-        Returns:
-            List[type]: Loaded classes
-        """
-        import numpy as np
-
-        def sort_priority(index: int) -> Callable[..., int | float]:
-            return lambda item: float('inf') if item[index] < 0 else item[index] # type: ignore
-
-        class_priority: Dict[type, tuple[int, int]] = self.__load_addon_classes(modules)
-
-        #モジュールの優先度をキー、クラスとクラスの優先度のリストを値とする辞書
-        sorted_by_mdl: Dict[int, List[tuple[type, int]]] = defaultdict(list)
-
-        #モジュールの優先度ごとにクラスを分類する
-        for cls, pr in class_priority.items():
-            mdl = sorted_by_mdl[pr[0]]
-
-            #最後の要素と今回の要素を比較し、今回の要素のほうが優先度が高ければ前に挿入する
-            if len(mdl) > 1 and mdl[-1][1] < pr[1]:
-                mdl.insert(-1, (cls, pr[1]))
-            else:
-                mdl.append((cls, pr[1]))
-
-        #辞書をモジュールの優先度ごとに並び替えたリストを作り、クラスを追加する
-        sorted_by_cls: List[type] = []
-        for clazz in [item[1] for item in sorted(sorted_by_mdl.items(), key=sort_priority(0))]:
-            sorted_by_cls.extend(np.array(clazz)[:, 0])
-
-        return self.__add_attribute(sorted_by_cls, cat_name) #足りない属性を追加して返す
-
-    def __load_addon_classes(self, modules: List[ModuleType]) -> Dict[type, tuple[int, int]]:
-        class_priority: Dict[type, tuple[int, int]] = {}
+        modules_and_classes: List[tuple[ModuleType, List[type]]] = []
 
         for mdl in modules:
-            mdl_priority: int = 0
-            if hasattr(mdl, 'ADDON_MODULE_PRIORITY') and type(getattr(mdl, 'ADDON_MODULE_PRIORITY')) == int:
-                mdl_priority = getattr(mdl, 'ADDON_MODULE_PRIORITY')
-            else:
-                mdl_priority = -1
+            classes = [cls[1] for cls in getmembers(mdl, isclass) if issubclass(cls[1], tuple(self.__TARGET_CLASSES)) and not cls[1] in self.__TARGET_CLASSES and not getattr(cls, '_addon_proc_disabled', False)]
+            for cls in classes:
+                self.__add_attribute(cls, cat_name)
+            modules_and_classes.append((mdl, sorted(classes, key=lambda cls: float('inf') if getattr(cls, '_addon_proc_priority', -1) == -1 else cls._addon_proc_priority))) # type: ignore
 
-            for clazz in getmembers(mdl, isclass):
-                clazz = clazz[1]
-                #対象のクラスがアドオンのクラスかつ無効でない場合追加する
-                if not any(issubclass(clazz, c) and  clazz != c for c in self.__TARGET_CLASSES): continue # type: ignore
-                if self.is_disabled(clazz): continue
+        return modules_and_classes
 
-                #優先順位とクラスを辞書に追加する
-                if hasattr(clazz, '_addon_proc_priority'): class_priority[clazz] = (mdl_priority, clazz._addon_proc_priority)
-                else: class_priority[clazz] = (mdl_priority, -1)
+    def __set_module_priority(self, init_module: ModuleType) -> None:
+        """Set module priority recursively."""
+        from inspect import getmembers, ismodule
+        priority_count: int = 0
 
-        return class_priority
+        def set_priority(package: ModuleType) -> None:
+            nonlocal priority_count
 
-    def __add_attribute(self, classes: List[type], cat_name: str | None) -> List[type]:
-        """Add necessary attributes to the add-on
+            for mdl in getmembers(package, ismodule):
+                if hasattr(mdl[1], '__path__'):
+                    try:
+                        _set_module_priority(import_module(mdl[1].__file__.lstrip(self.__path).replace(os.sep, '.') + '.' + '__init__'))
+                    except ModuleNotFoundError:
+                        set_priority(mdl[1])
+                mdl[1].ADDON_MODULE_PRIORITY = priority_count
+                priority_count += 1
+
+        def _set_module_priority(init: ModuleType) -> None:
+            nonlocal priority_count
+
+            if getattr(init, 'ADDON_INIT_LOADED', False): return
+            init.ADDON_INIT_LOADED = True
+
+            if not hasattr(init, 'priority'): return
+            if not issubclass(type(init.priority), Iterable): raise TypeError(gen_msg(ProcLoader, MsgType.CRITICAL, f'Attribute "priority" of module "{init}" is not iterable.'))
+
+            if init.__package__ is None: return
+            package_path = init.__package__ + '.'
+
+            for mdl_path in init.priority:
+                priority_path = package_path + mdl_path
+                module = import_module(priority_path)
+                #対象がパッケージだったら__init__モジュールから優先度を設定する
+                if hasattr(module, '__path__'):
+                    try:
+                        _set_module_priority(import_module(priority_path + '.' + '__init__'))
+                    except ModuleNotFoundError:
+                        #__init__モジュールがなければ登録順に優先度を設定する
+                        set_priority(module)
+                else:
+                    module.ADDON_MODULE_PRIORITY = priority_count
+
+                priority_count += 1
+
+        _set_module_priority(init_module)
+
+        return
+
+    def __add_attribute(self, cls: type, cat_name: str | None) -> type:
+        """Add necessary attributes to the add-on.
 
         Args:
-            classes (List[tuple[type, int]]): Target class
+            classes (type): Target class
             cat_name (str | None): Default category name applied to the panel
 
         Returns:
-            List[type]: Class with added elements
+            type: Class with added elements
         """
-        for cls in classes:
-            if not hasattr(cls, 'bl_idname'): cls.bl_idname = cls.__name__
-            if cat_name and issubclass(cls, types.Panel) and not hasattr(cls, 'bl_category'): cls.bl_category = cat_name # type: ignore
+        if not hasattr(cls, 'bl_idname'): cls.bl_idname = cls.__name__
+        if cat_name is not None and issubclass(cls, types.Panel) and not hasattr(cls, 'bl_category'): cls.bl_category = cat_name
 
-        return classes
+        return cls
