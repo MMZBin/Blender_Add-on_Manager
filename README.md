@@ -101,6 +101,7 @@ def register(manager):
 
 - If each module to be loaded has a register() or unregister() function, it will be called when the add-on is registered or unregistered.
     - If these functions take arguments, the corresponding `AddonManager` instance will be passed when the class is registered.
+- If the addon class has a class method named `set_manager()`, the corresponding `AddonManager` instance is passed.
     - Example:
         ```python
             class AddonClass(bpy.types.Operator):.
@@ -108,7 +109,6 @@ def register(manager):
                 def set_manager(manager):.
                     self.__manager = manager
         ```
-- If the addon class has a class method named `set_manager()`, the corresponding `AddonManager` instance is passed.
 - You can use Blender standard format translation dictionaries to support multiple languages.
 - Several constants are provided in `constants.py`, such as operator return values and mode names, to reduce typing time and typos.
 - The `DrawText` class can be used to simplify the drawing of text. (undocumented)

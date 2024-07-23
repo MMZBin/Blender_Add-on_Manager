@@ -104,6 +104,7 @@ def register(manager):
 
 - 読み込み対象の各モジュールにregister()関数やunregister()関数がある場合、アドオンの登録・解除の際に呼び出されます。
     - これらの関数が引数を取る場合、クラスが登録される際に対応する`AddonManager`インスタンスが渡されます。
+- アドオンのクラスが`set_manager()`というクラスメソッドを持つ場合、対応する`AddonManager`インスタンスが渡されます。
     - 例：
         ```python
             class AddonClass(bpy.types.Operator):
@@ -111,7 +112,6 @@ def register(manager):
                 def set_manager(manager):
                     self.__manager = manager
         ```
-- アドオンのクラスが`set_manager()`というクラスメソッドを持つ場合、対応する`AddonManager`インスタンスが渡されます。
 - Blender標準形式の翻訳辞書を使用して多言語に対応させることができます。
 - `constants.py`にオペレーターの戻り値やモード名などいくつかの定数が用意されているため、入力の手間とタイプミスを減らすことができます。
 - `DrawText`クラスを使ってテキストの描画を簡素化できます。(ドキュメント未作成)
