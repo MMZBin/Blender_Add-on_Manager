@@ -100,8 +100,8 @@ def register(manager):
         - When enabled, modules in the `debug` directory will be loaded, and modules will be reloaded when `script.reload` is executed.
 
 - If each module to be loaded has a register() or unregister() function, it will be called when the add-on is registered or unregistered.
-    - If these functions take arguments, the corresponding `AddonManager` instance will be passed when the class is registered.
-- If the addon class has a class method named `set_manager()`, the corresponding `AddonManager` instance is passed.
+    - When these functions take arguments, the corresponding `AddonManager` instance is passed.
+- If the addon class has a class method named `set_manager()`, the corresponding `AddonManager` instance is passed when the class is registered with Blender.
     - Example:
         ```python
             class AddonClass(bpy.types.Operator):.
