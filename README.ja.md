@@ -73,9 +73,9 @@ def register(manager):
     - `.`から始まるフォルダと`manager`フォルダ、AddonManagerクラスのコンストラクタで指定したフォルダは無視されます。
 - 各ディレクトリの`__init__.py`に`disable`という名前のリストを定義し、モジュール名を記述することでそのモジュールを無視します。
     - モジュールのパスはリストが定義されている`__init__.py`ファイルが存在するディレクトリから見た相対パスです。
-        - 例(`operators`フォルダ内の`__init__.py`ファイルの場合): `ignore = ['your_operator']`
+        - 例(`operators`フォルダ内の`__init__.py`ファイルの場合): `disable = ['your_operator']`
 - 各ディレクトリの`__init__.py`に`priority`という名前のリストを定義し、モジュール名を記述することでモジュールがその順序で読み込まれます。
-        - 例(`operators`フォルダ内の`__init__.py`ファイルの場合): `ignore = ['your_operator', 'your_operator2']`
+        - 例(`operators`フォルダ内の`__init__.py`ファイルの場合): `priority = ['your_operator', 'your_operator2']`
     - 指定しなかった場合の読み込み順は保証されません。
 - `disable`デコレータを使うことで特定のクラスを無視することができます。
     - 例: `@disable`
