@@ -29,9 +29,11 @@ from .manager.core.register_addon import AddonManager #Import the AddonManager c
 
 #Info of addon
 bl_info = {
-    "name": 'Addon_name',.
-    "author": 'your_name', 'version': (1, 0, 0)
-    "blender": (4, 1, 0), 'location': "View3D
+    "name": 'Addon_name',
+    "author": 'your_name',
+    'version': (1, 0, 0),
+    "blender": (4, 1, 0),
+    "location": 'View3D',
     "category": 'General'
 }
 
