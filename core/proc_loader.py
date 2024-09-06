@@ -106,7 +106,7 @@ class ProcLoader:
         from os import walk
         from os.path import join
 
-        exclude_modules += ['manager']
+        exclude_modules += [basename(dirname(dirname(__file__)))]
         if not self.__is_debug_mode: exclude_modules += exclude_when_not_debugging
 
         exclude_modules = [(self.__addon_name + '.' + dir) for dir in exclude_modules] # 無視するモジュールをモジュールパスの形にする
@@ -193,7 +193,7 @@ class ProcLoader:
             for mdl in getmembers(package, ismodule):
                 if hasattr(mdl[1], '__path__'):
                     try:
-                        _set_module_priority(import_module(mdl[1].__file__.lstrip(self.__path).replace(os.sep, '.') + '.' + '__init__'))
+                        _set_module_priority(import_module(mdl[1].__file__.lstrip(self.__path).replace(os.sep, '.') + '.' + '__init__')) # type: ignore
                     except ModuleNotFoundError:
                         set_priority(mdl[1])
                 mdl[1].ADDON_MODULE_PRIORITY = priority_count

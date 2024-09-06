@@ -9,14 +9,14 @@ Script to dynamically register and unregister files that make up Blender add-ons
 It can automatically perform tedious tasks such as registering, deregistering, deactivating, prioritizing, and registering shortcut keys for classes.
 It has been tested with Blender 4.1.
 
-The base classes to be loaded are written in the `TARGET_CLASSES` class variable in the `ProcLoader` class in [`/manager/core/proc_loader.py`](/manager/core/proc_loader.py).
+The base classes to be loaded are written in the `TARGET_CLASSES` class variable in the `ProcLoader` class in [`/core/proc_loader.py`](/core/proc_loader.py).
 
 We have tried to cover the basic classes, but please let us know if any classes are missing or superfluous.
 
 You can also specify arbitrary classes.
 
 ## Quick Start
-1. place `manager` folder in the add-ons folder
+1. Place this script in the add-ons folder (we recommend putting it in an appropriately named folder). In this README, it is assumed to be placed in the `manager` folder.
 2. create an instance of the `AddonManager` class in the `__init__.py` file
 3. wrap the `register()` and `unregister()` methods of the `AddonManager` instance in a global function with the same name
 4. place the file containing the operator you want to use in the specified folder

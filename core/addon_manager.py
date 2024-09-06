@@ -34,8 +34,6 @@ class AddonManager:
             cat_name (str | None, optional): Specify the default category name for the panel. Defaults to None.
             is_debug_mode (bool, optional): With or without debug mode. Defaults to False.
         """
-
-
         from os.path import basename, dirname
 
         self.__addon_name = basename(dirname(file))
