@@ -16,7 +16,7 @@ Blender 4.1で動作確認しています。
 任意のクラスを指定することも可能です。
 
 ## クイックスタート
-1. アドオンフォルダ内にこのスクリプトを配置(適当な名前のフォルダに入れることをおすすめします。)このREADMEでは`manager`フォルダ内に入れる想定です。
+1. アドオンフォルダ内にこのスクリプトを配置(適当な名前のフォルダに入れてください。)このREADMEでは`manager`フォルダ内に入れる想定です。
 2. `__init__.py`ファイル内で`AddonManager`クラスのインスタンスを生成
 3. `AddonManager`インスタンスの`register()`メソッドと`unregister()`メソッドを同じ名前のグローバル関数でラップする
 4. 指定したフォルダ内に使いたいオペレーターを含むファイルを配置する
@@ -38,7 +38,8 @@ bl_info = {
     "category": "General",
 }
 
-addon = AddonManager(__file__, locals()) #AddonManagerクラスのインスタンスを生成する
+addon = AddonManager(__file__, locals(), is_debug_mode=True) #AddonManagerクラスのインスタンスを生成する
+                                                             #is_debug_modeがTrueの場合のみアドオンのファイルを探索します。(Falseの場合はキャッシュファイルから読み込みます。)
 
 #'register()'メソッドと'unregister()'メソッドをラップする
 def register(): addon.register()
@@ -70,7 +71,9 @@ def register(manager):
 
 ## 機能
 - サブディレクトリを含めて、アドオンフォルダ内のすべてのアドオンのクラスを登録・解除します。
-    - `.`から始まるフォルダと`manager`フォルダ、AddonManagerクラスのコンストラクタで指定したフォルダは無視されます。
+    - `.`から始まるフォルダと`core`フォルダの親フォルダ、AddonManagerクラスのコンストラクタで指定したフォルダは無視されます。
+- `AddonManager`クラスのコンストラクタの`is_debug_mode`が`True`の場合のみアドオンのモジュールやクラスを探索し、`False`の場合は既存のキャッシュファイルから読み込みます。
+    - フォルダの構造やファイル構成が変更された場合は、一度`is_debug_mode`を`True`に設定して起動してください。(その後は`False`にしてもかまいません。)
 - 各ディレクトリの`__init__.py`に`disable`という名前のリストを定義し、モジュール名を記述することでそのモジュールを無視します。
     - モジュールのパスはリストが定義されている`__init__.py`ファイルが存在するディレクトリから見た相対パスです。
         - 例(`operators`フォルダ内の`__init__.py`ファイルの場合): `ignore = ['your_operator']`

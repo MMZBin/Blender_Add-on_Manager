@@ -16,10 +16,10 @@ We have tried to cover the basic classes, but please let us know if any classes 
 You can also specify arbitrary classes.
 
 ## Quick Start
-1. Place this script in the add-ons folder (we recommend putting it in an appropriately named folder). In this README, it is assumed to be placed in the `manager` folder.
-2. create an instance of the `AddonManager` class in the `__init__.py` file
-3. wrap the `register()` and `unregister()` methods of the `AddonManager` instance in a global function with the same name
-4. place the file containing the operator you want to use in the specified folder
+1. Place this script in the add-ons folder (put it in an appropriately named folder) In this README, it is assumed to be placed in the `manager` folder.
+2. Create an instance of the `AddonManager` class in the `__init__.py` file
+3. Wrap the `register()` and `unregister()` methods of the `AddonManager` instance in a global function with the same name
+4. Place the file containing the operator you want to use in the specified folder
 
 ### Sample Code
 
@@ -37,7 +37,8 @@ bl_info = {
     "category": 'General'
 }
 
-addon = AddonManager(__file__, locals()) #Create an instance of the AddonManager class
+addon = AddonManager(__file__, locals(), is_debug_mode=True) #Create an instance of the AddonManager class
+                                                             #Search for add-on files only if is_debug_mode is True. (If false, read from cache file.)
 
 #Wrap the 'register()' and 'unregister()' methods
 def register(): addon.register()
@@ -69,7 +70,9 @@ def register(manager):
 
 ## Function
 - Registers and unregisters classes for all add-ons in the add-ons folder, including subdirectories.
-    - Folders starting with `.` or `manager` folders, and folders specified in the constructor of the AddonManager class are ignored.
+    - Folders beginning with `.`, the parent folder of the `core` folder, and the folder specified in the constructor of the AddonManager class will be ignored.
+- Search for add-on modules and classes only if `is_debug_mode` in the constructor of the `AddonManager` class is `True`; if `False`, load from an existing cache file.
+    - If the folder structure or file configuration has been changed, start with `is_debug_mode` set to `True` once. (After that, you may set it to `False`.)
 - A list named `disable` is defined in `__init__.py` in each directory, and the module name is written to ignore that module.
     - The path of the module is relative to the directory where the `__init__.py` file in which the listing is defined resides.
         - Example (for `__init__.py` files in `operators` folder): `ignore = ['your_operator']`

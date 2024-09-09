@@ -16,7 +16,7 @@
 
 #パッケージの優先度とモジュールの優先度を分ける
 
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, Iterable, List, Tuple, Dict
 from types import ModuleType
 
 import os
@@ -75,16 +75,21 @@ class ProcLoader:
             target_classes (List[type] | None, optional): Type of class to load. Defaults to None.
             is_debug_mode (bool, optional): Presence of debug mode. Defaults to False.
         """
-        root = dirname(path) if isfile(path) else path #指定されたパスがファイルであれば最後のフォルダまでのパスを取得する
-        self.__addon_name = basename(root) #アドオンのフォルダ名       例:addon_folder
-        self.__path = dirname(root)      #アドオンフォルダまでのパス 例:path/to/blender/script/
-        self.__is_debug_mode = is_debug_mode
+        from os.path import join
 
-        self.__TARGET_CLASSES: List[type] = self.DEFAULT_TARGET_CLASSES if target_classes is None else target_classes
+        root = dirname(path) if isfile(path) else path #指定されたパスがファイルであれば最後のフォルダまでのパスを取得する
+        self.ADDON_NAME = basename(root) #アドオンのフォルダ名       例:addon_folder
+        self.PATH = dirname(root)      #アドオンフォルダまでのパス 例:path/to/blender/script/
+        self.CACHE_PATH = join(self.PATH, self.ADDON_NAME, "addon_modules.json")
+        self.IS_DEBUG_MODE = is_debug_mode
+
+        self.TARGET_CLASSES: List[type] = self.DEFAULT_TARGET_CLASSES if target_classes is None else target_classes
+
+        self.__cat_name: str | None = None
 
         #モジュールの検索パスに登録する
-        if self.__path not in sys.path:
-            sys.path.append(self.__path)
+        if self.PATH not in sys.path:
+            sys.path.append(self.PATH)
 
     @staticmethod
     def is_disabled(clazz: type) -> bool:
@@ -103,20 +108,77 @@ class ProcLoader:
         Returns:
             List[tuple[ModuleType, List[type]]]: List of modules and add-on classes.
         """
+
+        self.__cat_name = cat_name
+
+        if self.IS_DEBUG_MODE:
+            modules_and_classes = ProcFinder(self).load(dir_priorities, exclude_modules, exclude_when_not_debugging)
+
+            self.__write_cache(modules_and_classes)
+
+            return modules_and_classes
+        else:
+            return CacheLoader(self).load(self.CACHE_PATH)
+
+    def add_attribute(self, cls: type) -> type:
+        """Add necessary attributes to the add-on.
+
+        Args:
+            classes (type): Target class
+
+        Returns:
+            type: Class with added elements
+        """
+        if not hasattr(cls, 'bl_idname'): cls.bl_idname = cls.__name__
+        if self.__cat_name is not None and issubclass(cls, types.Panel) and not hasattr(cls, 'bl_category'): cls.bl_category = self.__cat_name
+
+        return cls
+
+    def __write_cache(self, modules_and_classes: List[tuple[ModuleType, List[type]]]) -> None:
+        import json
+
+        json_data: List[Dict[str, str | List[str]]] = []
+        for module, classes in modules_and_classes:
+            json_data.append({
+                'module':  module.__name__,
+                'classes': [cls.__name__ for cls in classes]
+            })
+
+        with open(self.CACHE_PATH, "w", encoding="utf-8") as cache:
+            json.dump(json_data, cache, indent=4)
+
+
+class ProcFinder:
+    """Load add-on modules and classes."""
+
+    def __init__(self, loader: ProcLoader) -> None:
+        self.__loader = loader
+
+    def load(self, dir_priorities: List[str]=[], exclude_modules: List[str]=[], exclude_when_not_debugging: List[str]=[]) -> List[tuple[ModuleType, List[type]]]:
+        """Load modules and add-on classes.
+
+        Args:
+            dir_priorities (List[str], optional): Specifies the order in which root-level directories are read.. Defaults to [].
+            exclude_modules (List[str], optional): Specify folders not to be read. Defaults to [].
+            exclude_when_not_debugging (List[str], optional): Specify folders to exclude when not in debug mode. Defaults to [].
+
+        Returns:
+            List[tuple[ModuleType, List[type]]]: List of modules and add-on classes.
+        """
         from os import walk
         from os.path import join
 
         exclude_modules += [basename(dirname(dirname(__file__)))]
-        if not self.__is_debug_mode: exclude_modules += exclude_when_not_debugging
+        if not self.__loader.IS_DEBUG_MODE: exclude_modules += exclude_when_not_debugging
 
-        exclude_modules = [(self.__addon_name + '.' + dir) for dir in exclude_modules] # 無視するモジュールをモジュールパスの形にする
+        exclude_modules = [(self.__loader.ADDON_NAME + '.' + dir) for dir in exclude_modules] # 無視するモジュールをモジュールパスの形にする
 
         modules_path_with_pr: dict[str, int] = {}
 
-        for root, _, files in walk(join(self.__path, self.__addon_name)):
+        for root, _, files in walk(join(self.__loader.PATH, self.__loader.ADDON_NAME)):
             if basename(root).startswith('.'): continue
 
-            root_mdl_path = root.lstrip(self.__path + os.sep).replace(os.sep, '.')
+            root_mdl_path = root.lstrip(self.__loader.PATH + os.sep).replace(os.sep, '.')
 
             priority = -1
 
@@ -134,14 +196,14 @@ class ProcLoader:
         modules_path = [mdl[0] for mdl in sorted(modules_path_with_pr.items(), key=lambda path: float('inf') if path[1] < 0 else path[1])]
 
         modules = list(map(import_module, modules_path))
-        if not self.__is_debug_mode:
+        if not self.__loader.IS_DEBUG_MODE:
             modules = [mdl for mdl in modules if not mdl.__package__.endswith('debug')] # type: ignore
 
         exclude_modules += self.__load_init_attr(modules)
 
         modules = [mdl for mdl in modules if mdl.__file__ and not self.__abs_to_mdl_path(mdl.__file__ + '.').startswith(tuple(exclude_modules))] #無効なモジュールを除外する
 
-        modules_and_classes = self.__load_classes(modules, cat_name)
+        modules_and_classes = self.__load_classes(modules)
 
         return sorted(modules_and_classes, key=lambda mdl: float('inf') if getattr(mdl[0], 'ADDON_MODULE_PRIORITY', -1) == -1 else mdl[0].ADDON_MODULE_PRIORITY)
 
@@ -165,19 +227,19 @@ class ProcLoader:
         return disabled_modules
 
     def __abs_to_mdl_path(self, path: str) -> str:
-        return path.lstrip(self.__path).replace(os.sep, '.')
+        return path.lstrip(self.__loader.PATH).replace(os.sep, '.')
 
 
-    def __load_classes(self, modules: List[ModuleType], cat_name: str | None) -> List[tuple[ModuleType, List[type]]]:
+    def __load_classes(self, modules: List[ModuleType]) -> List[tuple[ModuleType, List[type]]]:
         """Reads the add-on class."""
         from inspect import getmembers, isclass
 
         modules_and_classes: List[tuple[ModuleType, List[type]]] = []
 
         for mdl in modules:
-            classes = [cls[1] for cls in getmembers(mdl, isclass) if issubclass(cls[1], tuple(self.__TARGET_CLASSES)) and not cls[1] in self.__TARGET_CLASSES and not getattr(cls, '_addon_proc_disabled', False)]
+            classes = [cls[1] for cls in getmembers(mdl, isclass) if issubclass(cls[1], tuple(self.__loader.TARGET_CLASSES)) and not cls[1] in self.__loader.TARGET_CLASSES and not getattr(cls, '_addon_proc_disabled', False)]
             for cls in classes:
-                self.__add_attribute(cls, cat_name)
+                self.__loader.add_attribute(cls)
             modules_and_classes.append((mdl, sorted(classes, key=lambda cls: float('inf') if getattr(cls, '_addon_proc_priority', -1) == -1 else cls._addon_proc_priority))) # type: ignore
 
         return modules_and_classes
@@ -193,7 +255,7 @@ class ProcLoader:
             for mdl in getmembers(package, ismodule):
                 if hasattr(mdl[1], '__path__'):
                     try:
-                        _set_module_priority(import_module(mdl[1].__file__.lstrip(self.__path).replace(os.sep, '.') + '.' + '__init__')) # type: ignore
+                        _set_module_priority(import_module(mdl[1].__file__.lstrip(self.__loader.PATH).replace(os.sep, '.') + '.' + '__init__')) # type: ignore
                     except ModuleNotFoundError:
                         set_priority(mdl[1])
                 mdl[1].ADDON_MODULE_PRIORITY = priority_count
@@ -230,17 +292,31 @@ class ProcLoader:
 
         return
 
-    def __add_attribute(self, cls: type, cat_name: str | None) -> type:
-        """Add necessary attributes to the add-on.
+#pyright: reportUnknownVariableType = false
+#pyright: reportUnknownArgumentType = false
 
-        Args:
-            classes (type): Target class
-            cat_name (str | None): Default category name applied to the panel
+class CacheLoader:
+    def __init__(self, loader: ProcLoader) -> None:
+        self.__loader = loader
 
-        Returns:
-            type: Class with added elements
-        """
-        if not hasattr(cls, 'bl_idname'): cls.bl_idname = cls.__name__
-        if cat_name is not None and issubclass(cls, types.Panel) and not hasattr(cls, 'bl_category'): cls.bl_category = cat_name
+    def load(self, path: str) -> List[Tuple[ModuleType, List[type]]]:
+        import json
+        from os.path import exists
 
-        return cls
+        if not exists(path):
+            raise FileNotFoundError(gen_msg(CacheLoader, MsgType.CRITICAL, "The cache for the add-on's module has not yet been created.\nPlease temporarily enable debug mode for the add-on and restart."))
+
+        module_and_classes: List[tuple[ModuleType, List[type]]] = []
+        with open(path, "r", encoding="utf-8") as cache:
+            cache = json.load(cache)
+
+            for entry in cache:
+                module_name = entry['module']
+                class_names = entry['classes']
+
+                module = import_module(module_name)
+                classes = [self.__loader.add_attribute(getattr(module, cls_name)) for cls_name in class_names]
+
+                module_and_classes.append((module, classes))
+
+        return module_and_classes
