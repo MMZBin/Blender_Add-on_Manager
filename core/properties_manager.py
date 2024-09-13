@@ -74,7 +74,7 @@ class PropertiesManager:
 
         return register_props
 
-    def get_prop(self, context: object, attr: str, is_mangling: bool = True) -> Property:
+    def get(self, context: object, attr: str, is_mangling: bool = True) -> Property:
         """Retrieves a property.
 
         Args:

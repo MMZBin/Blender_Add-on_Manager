@@ -75,9 +75,9 @@ def register(manager):
     - If the folder structure or file configuration has been changed, start with `is_debug_mode` set to `True` once. (After that, you may set it to `False`.)
 - A list named `disable` is defined in `__init__.py` in each directory, and the module name is written to ignore that module.
     - The path of the module is relative to the directory where the `__init__.py` file in which the listing is defined resides.
-        - Example (for `__init__.py` files in `operators` folder): `ignore = ['your_operator']`
+        - Example (for `__init__.py` files in `operators` folder): `disable = ['your_operator']`
 - Define a list named `priority` in `__init__.py` in each directory, and write the module names so that the modules are loaded in that order.
-        - Example (for `__init__.py` file in `operators` folder): `ignore = ['your_operator', 'your_operator2']`
+        - Example (for `__init__.py` file in `operators` folder): `priority = ['your_operator', 'your_operator2']`
     - If not specified, the reading order is not guaranteed.
 - Certain classes can be ignored by using the `disable` decorator.
     - Example: `@disable`.
