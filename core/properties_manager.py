@@ -3,7 +3,7 @@
 
 from typing import List, Any
 
-from .proc_loader import ProcLoader
+from .loader.proc_loader import ProcLoader
 
 from bpy.props import PointerProperty # type: ignore
 from bpy import types

@@ -8,7 +8,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from .proc_loader import ProcLoader
+from .loader.proc_loader import ProcLoader
 
 from bpy import context
 from bpy.types import KeyMap, KeyMapItem
