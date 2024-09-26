@@ -37,7 +37,6 @@ class CacheLoader:
                 )
             )
 
-        print("start!")
         with open(path, "rb") as cache:
             plugins = pickle.load(cache)
 
