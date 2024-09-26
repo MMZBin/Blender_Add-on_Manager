@@ -77,12 +77,7 @@ class ProcLoader:
         types.ShaderNodeTree, types.TextureNodeTree, types.GeometryNodeTree, types.OperatorMacro
     ]
 
-    def __init__(
-        self,
-        path: str,
-        target_classes: Tuple[type] | None = None,
-        is_debug_mode: bool = False,
-    ) -> None:
+    def __init__(self, path: str, target_classes: Tuple[type] | None = None, is_debug_mode: bool = False, cache_path: str | None=None) -> None:
         """Initialize and add addon folder to module search path
 
         Args:
@@ -94,10 +89,11 @@ class ProcLoader:
             dirname(path) if isfile(path) else path
         )  # 指定されたパスがファイルであれば最後のフォルダまでのパスを取得する
         self.ADDON_NAME = basename(root)  # アドオンのフォルダ名       例:addon_folder
-        self.PATH = dirname(
-            root
-        )  # アドオンフォルダまでのパス 例:path/to/blender/script/
-        self.CACHE_PATH = join(self.PATH, self.ADDON_NAME, "addon_modules.pickle")
+        self.PATH = dirname(root)  # アドオンフォルダまでのパス 例:path/to/blender/script/
+        if cache_path is None:
+            self.CACHE_PATH = join(dirname(dirname(dirname(__file__))), "plugins.pkl")
+        else:
+            self.CACHE_PATH = join(cache_path, "plugins.pkl") # type: ignore
         self.IS_DEBUG_MODE = is_debug_mode
 
         self.TARGET_CLASSES: List[type] = (

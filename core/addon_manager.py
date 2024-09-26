@@ -33,6 +33,7 @@ class AddonManager:
         translation_table: Dict[str, Dict[tuple[Any, Any], str]] | None = None,
         cat_name: str | None = None,
         is_debug_mode: bool = False,
+        cache_path: str | None = None
     ) -> None:
         """Initialize
 
@@ -45,15 +46,15 @@ class AddonManager:
             translation_table (Dict[str, Dict[tuple[Any, Any], str]] | None, optional): translation dictionary. Defaults to None.
             cat_name (str | None, optional): Specify the default category name for the panel. Defaults to None.
             is_debug_mode (bool, optional): With or without debug mode. Defaults to False.
+            cache_path(str | None, optional): Specify the path where the cache file is to be saved.
         """
         from os.path import basename, dirname
 
         self.__addon_name = basename(dirname(file))
         self.__is_debug_mode = is_debug_mode
+        self.__CACHE_PATH = cache_path
         self.__is_initialized = "__addon_enabled__" in local_symbols
-        self.__load(
-            file, cat_name, dir_priorities, exclude_dirs, exclude_when_not_debugging
-        )
+        self.__load(file, cat_name, dir_priorities, exclude_dirs, exclude_when_not_debugging)
         self.__properties_manager = PropertiesManager(self.__addon_name)
         self.__keymap_manager = KeymapManager()
         self.__translation_table = translation_table
@@ -75,6 +76,7 @@ class AddonManager:
         if self.__is_initialized:
             self.__unregister_utils()
 
+        # for cls in [clazz for clazz in self.__classes if issubclass(clazz, types.PropertyGroup)]:
         for cls in [clazz for clazz in self.__plugins.classes if not hasattr(types, clazz.bl_idname)]: # type: ignore
             if issubclass(cls, types.PropertyGroup) and cls.is_registered: # type: ignore
                 continue
@@ -102,7 +104,7 @@ class AddonManager:
         cat_name: str | None,
         dir_priorities: List[str] | None,
         exclude_dirs: List[str] | None,
-        exclude_when_not_debugging: List[str] | None,
+        exclude_when_not_debugging: List[str] | None
     ) -> None:
         """Reload the add-on class when the 'script.reload' operator is called"""
         if not self.__is_debug_mode or not self.__is_initialized:
@@ -145,11 +147,9 @@ class AddonManager:
         cat_name: str | None,
         dir_priorities: List[str] | None,
         exclude_dirs: List[str] | None,
-        exclude_when_not_debugging: List[str] | None,
+        exclude_when_not_debugging: List[str] | None
     ) -> None:
-        self.__plugins = ProcLoader(file, is_debug_mode=self.__is_debug_mode).load(
-            dir_priorities, exclude_dirs, exclude_when_not_debugging, cat_name
-        )
+        self.__plugins = ProcLoader(file, self.__CACHE_PATH, is_debug_mode=self.__is_debug_mode).load(dir_priorities, exclude_dirs, exclude_when_not_debugging, cat_name)
 
     def __unregister_utils(self) -> None:
         self.__call("unregister")

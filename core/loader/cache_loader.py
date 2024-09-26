@@ -33,7 +33,7 @@ class CacheLoader:
                 gen_msg(
                     CacheLoader,
                     MsgType.CRITICAL,
-                    "The cache for the add-on's module has not yet been created.\nPlease temporarily enable debug mode for the add-on and restart.",
+                    f"Cache file is not in {path}. \nMake sure the path is correct or create a cache file with debug mode enabled."
                 )
             )
 
