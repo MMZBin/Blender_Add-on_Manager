@@ -75,8 +75,7 @@ class AddonManager:
         if self.__is_initialized:
             self.__unregister_utils()
 
-        # for cls in [clazz for clazz in self.__classes if issubclass(clazz, types.PropertyGroup)]:
-        for cls in [clazz for clazz in self.__classes if not hasattr(types, clazz.bl_idname)]:  # type: ignore
+        for cls in [clazz for clazz in self.__plugins.classes if not hasattr(types, clazz.bl_idname)]: # type: ignore
             if issubclass(cls, types.PropertyGroup) and cls.is_registered: # type: ignore
                 continue
 
@@ -92,7 +91,7 @@ class AddonManager:
 
     def unregister(self) -> None:
         """Unregister the add-on class and each function"""
-        for cls in reversed(self.__classes):
+        for cls in reversed(self.__plugins.classes):
             unregister_class(cls)
 
         self.__unregister_utils()
@@ -109,7 +108,7 @@ class AddonManager:
         if not self.__is_debug_mode or not self.__is_initialized:
             return
 
-        for mdl in self.__modules:
+        for mdl in self.__plugins.modules:
             reload(mdl)  # type: ignore
         invalidate_caches()
         self.__load(
@@ -122,7 +121,7 @@ class AddonManager:
         Args:
             identifier (str): The name of the function you want to call
         """
-        for mdl in self.__modules:
+        for mdl in self.__plugins.modules:
             self.__invoke(mdl, identifier)
 
     def __invoke(self, mdl: ModuleType | type, identifier: str) -> None:
@@ -148,13 +147,9 @@ class AddonManager:
         exclude_dirs: List[str] | None,
         exclude_when_not_debugging: List[str] | None,
     ) -> None:
-        modules = ProcLoader(file, is_debug_mode=self.__is_debug_mode).load(
+        self.__plugins = ProcLoader(file, is_debug_mode=self.__is_debug_mode).load(
             dir_priorities, exclude_dirs, exclude_when_not_debugging, cat_name
         )
-        self.__modules = [mdl.module for mdl in modules]
-
-        classes = [mdl.classes for mdl in modules]
-        self.__classes = [cls for cls_list in classes for cls in cls_list] # すべてのクラスを取得する
 
     def __unregister_utils(self) -> None:
         self.__call("unregister")

@@ -14,18 +14,18 @@
 
 # パッケージの優先度とモジュールの優先度を分ける
 
-from typing import Callable, List, Tuple, Dict
+from typing import Callable, List, Tuple
 
 from os.path import dirname, basename, isfile, join
 import sys
 
-import json
+import pickle
 
 from bpy import types
 
 from ..exceptions import DuplicateAttributeError
 
-from .addon_module import AddonModule
+from .addon_module import Plugins
 from .proc_finder import ProcFinder
 from .cache_loader import CacheLoader
 
@@ -97,7 +97,7 @@ class ProcLoader:
         self.PATH = dirname(
             root
         )  # アドオンフォルダまでのパス 例:path/to/blender/script/
-        self.CACHE_PATH = join(self.PATH, self.ADDON_NAME, "addon_modules.json")
+        self.CACHE_PATH = join(self.PATH, self.ADDON_NAME, "addon_modules.pickle")
         self.IS_DEBUG_MODE = is_debug_mode
 
         self.TARGET_CLASSES: List[type] = (
@@ -121,7 +121,7 @@ class ProcLoader:
         exclude_modules: List[str] | None = None,
         exclude_when_not_debugging: List[str] | None = None,
         cat_name: str | None = None,
-    ) -> List[AddonModule]:
+    ) -> Plugins:
         """Load modules and add-on classes.
 
         Args:
@@ -131,53 +131,38 @@ class ProcLoader:
             cat_name (str | None, optional): Specify the default category name for the panel. Defaults to None.
 
         Returns:
-            List[AddonModule]: List of modules and add-on classes.
+            Plugins: List of modules and add-on classes.
         """
 
         self.__cat_name = cat_name
 
+        plugins: Plugins | None = None
+
         if self.IS_DEBUG_MODE:
-            modules_and_classes = ProcFinder(self).load(
-                dir_priorities, exclude_modules, exclude_when_not_debugging
-            )
+            plugins = ProcFinder(self).load(dir_priorities, exclude_modules, exclude_when_not_debugging)
 
-            self.__write_cache(modules_and_classes)
-
-            return modules_and_classes
+            self.__write_cache(plugins)
         else:
-            return CacheLoader(self).load(self.CACHE_PATH)
+            plugins = CacheLoader(self).load()
 
-    def add_attribute(self, cls: type) -> type:
+        self.__add_attribute(plugins.classes)
+
+        return plugins
+
+    def __add_attribute(self, classes: List[type]) -> None:
         """Add necessary attributes to the add-on.
 
         Args:
-            classes (type): Target class
-
-        Returns:
-            type: Class with added elements
+            classes (List[type]): Target class
         """
-        if not hasattr(cls, "bl_idname"):
-            cls.bl_idname = cls.__name__
-        if (
-            self.__cat_name is not None
-            and issubclass(cls, types.Panel)
-            and not hasattr(cls, "bl_category")
-        ):
-            cls.bl_category = self.__cat_name
-
-        return cls
+        for cls in classes:
+            if not hasattr(cls, "bl_idname"):
+                cls.bl_idname = cls.__name__
+            if (self.__cat_name is not None and issubclass(cls, types.Panel) and not hasattr(cls, "bl_category")):
+                cls.bl_category = self.__cat_name
 
     def __write_cache(
-        self, modules_and_classes: List[AddonModule]
+        self, plugins: Plugins
     ) -> None:
-        json_data: List[Dict[str, str | List[str]]] = []
-        for addon_module in modules_and_classes:
-            json_data.append(
-                {
-                    "module": addon_module.module.__name__,
-                    "classes": [cls.__name__ for cls in addon_module.classes]
-                }
-            )
-
-        with open(self.CACHE_PATH, "w", encoding="utf-8") as cache:
-            json.dump(json_data, cache, indent=4)
+        with open(self.CACHE_PATH, "wb") as cache:
+            pickle.dump(plugins, cache)

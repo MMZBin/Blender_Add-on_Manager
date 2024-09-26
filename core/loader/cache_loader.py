@@ -6,16 +6,15 @@
 
 from __future__ import annotations
 
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from os.path import exists
-from importlib import import_module
 
-import json
+import pickle
 
 from ..utils.gen_msg import MsgType, gen_msg
 
-from .addon_module import AddonModule
+from .addon_module import Plugins
 
 if TYPE_CHECKING:
     from .proc_loader import ProcLoader
@@ -25,8 +24,10 @@ class CacheLoader:
         """Load add-on classes and modules from cache."""
         self.__loader = loader
 
-    def load(self, path: str) -> List[AddonModule]:
+    def load(self) -> Plugins:
         """Load add-on classes and modules from cache."""
+        path = self.__loader.CACHE_PATH
+
         if not exists(path):
             raise FileNotFoundError(
                 gen_msg(
@@ -36,17 +37,8 @@ class CacheLoader:
                 )
             )
 
-        module_and_classes: List[AddonModule] = []
-        with open(path, "r", encoding="utf-8") as cache:
-            cache = json.load(cache)
+        print("start!")
+        with open(path, "rb") as cache:
+            plugins = pickle.load(cache)
 
-            for entry in cache:
-                module_name = entry["module"]
-                class_names = entry["classes"]
-
-                module = import_module(module_name)
-                classes = [self.__loader.add_attribute(getattr(module, cls_name)) for cls_name in class_names]
-
-                module_and_classes.append(AddonModule(module, classes))
-
-        return module_and_classes
+        return plugins

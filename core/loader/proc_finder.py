@@ -20,7 +20,7 @@ from inspect import getmembers, ismodule, isclass
 
 from ..utils.gen_msg import MsgType, gen_msg
 
-from .addon_module import AddonModule
+from .addon_module import AddonModule, Plugins
 
 if TYPE_CHECKING:
     from .proc_loader import ProcLoader
@@ -36,7 +36,7 @@ class ProcFinder:
         dir_priorities: List[str] | None,
         exclude_modules: List[str] | None,
         exclude_when_not_debugging: List[str] | None,
-    ) -> List[AddonModule]:
+    ) -> Plugins:
         """Load modules and add-on classes.
 
         Args:
@@ -45,7 +45,7 @@ class ProcFinder:
             exclude_when_not_debugging (List[str], optional): Specify folders to exclude when not in debug mode. Defaults to None.
 
         Returns:
-            List[AddonModule]: List of modules and add-on classes.
+            Plugins: List of modules and add-on classes.
         """
 
         if exclude_modules is None:
@@ -65,9 +65,7 @@ class ProcFinder:
             if basename(root).startswith("."):
                 continue
 
-            root_mdl_path = root.lstrip(self.__loader.PATH + os.sep).replace(
-                os.sep, "."
-            )
+            root_mdl_path = root.lstrip(self.__loader.PATH + os.sep).replace(os.sep, ".")
 
             dir_priority = -1
 
@@ -103,25 +101,18 @@ class ProcFinder:
             if mdl.__file__ and not self.__abs_to_mdl_path(mdl.__file__ + ".").startswith(tuple(exclude_modules))
         ] # 無効なモジュールを除外する
 
-        modules_and_classes = self.__load_classes(modules)
-
-        return sorted(
-            modules_and_classes,
-            key=lambda mdl: (
-                float("inf")
-                if getattr(mdl.module, "ADDON_MODULE_PRIORITY", -1) == -1
-                else mdl.module.ADDON_MODULE_PRIORITY
-            )
+        addon_modules = self.__load_classes(modules)
+        addon_modules =  sorted(
+            addon_modules,
+            key=lambda mdl: (float("inf")if getattr(mdl.module, "ADDON_MODULE_PRIORITY", -1) == -1 else mdl.module.ADDON_MODULE_PRIORITY)
         )
+
+        return Plugins.from_addon_modules(addon_modules)
 
     def __load_init_attr(self, modules: List[ModuleType]) -> List[str]:
         disabled_modules: List[str] = []
 
-        for init in [
-            mdl
-            for mdl in modules
-            if mdl.__file__ and mdl.__file__.endswith("__init__.py")
-        ]:
+        for init in [mdl for mdl in modules if mdl.__file__ and mdl.__file__.endswith("__init__.py")]:
             modules.remove(init)
 
             if init.__package__ is None:
@@ -148,15 +139,15 @@ class ProcFinder:
         self, modules: List[ModuleType]
     ) -> List[AddonModule]:
         """Reads the add-on class."""
-        modules_and_classes: List[AddonModule] = []
+        addon_modules: List[AddonModule] = []
 
         for mdl in modules:
             classes = [cls[1] for cls in getmembers(mdl, isclass) if issubclass(cls[1], tuple(self.__loader.TARGET_CLASSES)) and not cls[1] in self.__loader.TARGET_CLASSES and not getattr(cls, "_addon_proc_disabled", False)]
-            for cls in classes:
-                self.__loader.add_attribute(cls)
-            modules_and_classes.append(AddonModule(mdl, sorted(classes, key=lambda cls: float("inf") if getattr(cls, "addon_proc_priority", -1) == -1 else cls.addon_proc_priority))) # type: ignore
+            # for cls in classes:
+            #     self.__loader.add_attribute(cls)
+            addon_modules.append(AddonModule(mdl, sorted(classes, key=lambda cls: float("inf") if getattr(cls, "addon_proc_priority", -1) == -1 else cls.addon_proc_priority))) # type: ignore
 
-        return modules_and_classes
+        return addon_modules
 
     def __set_module_priority(self, init_module: ModuleType) -> None:
         """Set module priority recursively."""
