@@ -142,7 +142,7 @@ class ProcFinder:
         addon_modules: List[AddonModule] = []
 
         for mdl in modules:
-            classes = [cls[1] for cls in getmembers(mdl, isclass) if issubclass(cls[1], tuple(self.__loader.TARGET_CLASSES)) and not cls[1] in self.__loader.TARGET_CLASSES and not getattr(cls, "_addon_proc_disabled", False)]
+            classes = [cls[1] for cls in getmembers(mdl, isclass) if issubclass(cls[1], tuple(self.__loader.TARGET_CLASSES)) and not cls[1] in self.__loader.TARGET_CLASSES and not getattr(cls, "addon_proc_disabled", False)]
             # for cls in classes:
             #     self.__loader.add_attribute(cls)
             addon_modules.append(AddonModule(mdl, sorted(classes, key=lambda cls: float("inf") if getattr(cls, "addon_proc_priority", -1) == -1 else cls.addon_proc_priority))) # type: ignore
