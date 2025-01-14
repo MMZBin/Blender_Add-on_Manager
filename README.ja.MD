@@ -22,38 +22,41 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
 ### アドオンクラス管理機能([AddonManager](/manager/addon_manager.py))
 - `modules`フォルダ内に存在するモジュールとその中で定義されているアドオンに関連するクラス(`bpy.types.bpy_struct`を継承しているクラス)を自動で取得し、Blenderに登録/解除します。
 - ファイルシステムをスキャンした場合(`is_debug_mode = true`か`module.pkl`が存在しない場合)、起動時にコンソールにログが表示されます。
-    - [config.toml](/manager/data/config.toml)
-        - 読み込みに関する設定を保存します。
-            - `is_debug_mode`(boolean)
-                - デバッグモードを有効にするかを指定します。
-                    - `true`の場合は必ずファイルシステムをスキャンします。
-                    - `false`の場合は`modules.pkl`ファイルが存在しない場合のみファイルシステムをスキャンし、存在する場合はキャッシュから読み込みます。
-            - `disabled`(list of string)(任意)
-                - 無効にするモジュールを指定します。
-                - 指定したモジュールとそのサブモジュールが無視されます。
-                - 例:
-                    ```toml
-                    disabled = [
-                        "spam.ham" # /modules/spam/ham 以下のモジュールが無視されます。
-                    ]
-                    ```
-            - `priorities`(list of string)(任意)
-                - モジュールの読み込み順を指定します。
-                - 例
-                    ```toml
-                    # spam -> eggsの順番でBlenderに登録されます。
-                    priorities = [
-                        "spam",
-                        "eggs"
-                    ]
-                    ```
-    - [decorators](/manager/core/loader/decorators.py)
-        - モジュール内のアドオンクラスに関する情報を設定します。
-            - `@disable`デコレータ
-                - このデコレータを付けたクラスは読み込み時に無視されます。
-            - `@priority`デコレータ
-                - このデコレータに渡した番号が小さいほど先に読み込まれます。
-                - 同じモジュール内でのみ比較されます。
+- 各モジュール内に`register()`関数や`unregister()`関数が存在する場合、アドオンの登録時と解除時に呼び出されます。
+    - もしこれらの関数が引数を取る場合、対応する[AddonManager](/manager/addon_manager.py)インスタンスが渡されます。
+    - モジュールが`disabled`に指定されている場合は呼び出されません。
+        - [config.toml](/manager/data/config.toml)
+            - 読み込みに関する設定を保存します。
+                - `is_debug_mode`(boolean)
+                    - デバッグモードを有効にするかを指定します。
+                        - `true`の場合は必ずファイルシステムをスキャンします。
+                        - `false`の場合は`modules.pkl`ファイルが存在しない場合のみファイルシステムをスキャンし、存在する場合はキャッシュから読み込みます。
+                - `disabled`(list of string)(任意)
+                    - 無効にするモジュールを指定します。
+                    - 指定したモジュールとそのサブモジュールが無視されます。
+                    - 例:
+                        ```toml
+                        disabled = [
+                            "spam.ham" # /modules/spam/ham 以下のモジュールが無視されます。
+                        ]
+                        ```
+                - `priorities`(list of string)(任意)
+                    - モジュールの読み込み順を指定します。
+                    - 例
+                        ```toml
+                        # spam -> eggsの順番でBlenderに登録されます。
+                        priorities = [
+                            "spam",
+                            "eggs"
+                        ]
+                        ```
+        - [decorators](/manager/core/loader/decorators.py)
+            - モジュール内のアドオンクラスに関する情報を設定します。
+                - `@disable`デコレータ
+                    - このデコレータを付けたクラスは読み込み時に無視されます。
+                - `@priority`デコレータ
+                    - このデコレータに渡した番号が小さいほど先に読み込まれます。
+                    - 同じモジュール内でのみ比較されます。
 
 ### キーマップ管理機能([KeymapManager](/manager/features/keymap_manager.py))
 - キーマップの管理を抽象化します。
