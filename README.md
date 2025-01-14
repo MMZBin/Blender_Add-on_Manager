@@ -21,6 +21,8 @@ Place this repository in your project folder and create modules within the `modu
 ### Add-on Class Management ([AddonManager](/manager/addon_manager.py))
 - Automatically retrieves and registers/unregisters modules within the `modules` folder and the classes related to add-ons defined in them (`bpy.types.bpy_struct` subclasses).
 - If the file system is scanned (when `is_debug_mode = true` or `module.pkl` does not exist), logs will be displayed in the console during startup.
+    - Once loading is complete, a `modules.pkl` file will be created under the [data](/manager/data/) folder. If `is_debug_mode = false`, modules will be loaded from this cache.
+
 - If a `register()` function or `unregister()` function exists in each module, they will be called during the add-on registration and unregistration process.
     - If these functions take arguments, the corresponding [AddonManager](/manager/addon_manager.py) instance will be passed as an argument.
     - These functions will not be called if the module is specified in `disabled`.
