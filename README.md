@@ -65,6 +65,27 @@ def register() -> None:
     KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
+### Custom Property Management ([PropertiesManager](/manager/features/properties_manager.py))
+- Abstracts custom property management.
+- Implemented as a singleton class.
+- Use the `add()` method to register properties and the `delete()` method to remove them.
+- Properties are automatically removed when the add-on itself is unregistered from Blender.
+- Example:
+```python
+# Registration
+def register() -> None:
+    PropertiesManager().add(bpy.types.Scene, ("your_prop_name", Your_PropertyGroup))
+# Usage
+PropertiesManager().get(bpy.context.scene, "your_prop_name")
+```
+
+### Constants ([constants](/manager/constants.py))
+- Includes constants for values such as return codes for the `execute()` method of operators and object types.
+
+## Notes
+- When importing modules, using the editor's auto-completion (in the form `from manager. ...`) may result in runtime errors.
+    - If you encounter an error, try switching to relative imports (e.g., `from ...manager import ...`).
+
 ## License
 
 This program is licensed under the MIT License.
