@@ -1,0 +1,9 @@
+{
+  "ignoreWords": [
+    "pycache",
+    "keyconfigs",
+    "idname",
+    "keymaps",
+    "oskey",
+    ]
+}
