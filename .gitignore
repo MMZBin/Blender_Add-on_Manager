@@ -1,5 +1,4 @@
 __pycache__/
-/manager/data/*
 /modules/*
 
 *.py[cod]
