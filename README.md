@@ -22,42 +22,43 @@ Place this repository in your project folder and create modules within the `modu
 - Automatically retrieves and registers/unregisters modules within the `modules` folder and the classes related to add-ons defined in them (`bpy.types.bpy_struct` subclasses).
 - If the file system is scanned (when `is_debug_mode = true` or `module.pkl` does not exist), logs will be displayed in the console during startup.
     - Once loading is complete, a `modules.pkl` file will be created under the [data](/data/) folder. If `is_debug_mode = false`, modules will be loaded from this cache.
+    - __Unless there is a special reason, it is better to set `is_debug_mode = false` and not include `modules.pkl` when deploying your add-ons.__
 
 - If a `register()` function or `unregister()` function exists in each module, they will be called during the add-on registration and unregistration process.
     - If these functions take arguments, the corresponding [AddonManager](/addon_manager.py) instance will be passed as an argument.
     - These functions will not be called if the module is specified in `disabled`.
-        - [config.toml](/data/config.toml)
-            - Stores settings related to loading.
-                - `is_debug_mode` (boolean)
-                    - Specifies whether to enable debug mode.
-                        - `true`: Always scans the file system.
-                        - `false`: Scans the file system only if `modules.pkl` does not exist; otherwise, loads from cache.
-                - `disabled` (list of strings) (optional)
-                    - Specifies modules to disable.
-                    - The specified modules and their submodules will be ignored.
-                    - Example:
-                        ```toml
-                        disabled = [
-                            "spam.ham" # Ignores modules under /modules/spam/ham.
-                        ]
-                        ```
-                - `priorities` (list of strings) (optional)
-                    - Specifies the loading order of modules.
-                    - Example:
-                        ```toml
-                        # Registers spam first, followed by eggs in Blender.
-                        priorities = [
-                            "spam",
-                            "eggs"
-                        ]
-                        ```
-        - [decorators](/core/loader/decorators.py)
-            - Configures information about add-on-related classes in modules.
-                - `@disable` decorator
-                    - Classes with this decorator are ignored during loading.
-                - `@priority` decorator
-                    - Classes with smaller priority numbers are loaded first.
-                    - Only compared within the same module.
+- [config.toml](/data/config.toml)
+    - Stores settings related to loading.
+        - `is_debug_mode` (boolean)
+            - Specifies whether to enable debug mode.
+                - `true`: Always scans the file system.
+                - `false`: Scans the file system only if `modules.pkl` does not exist; otherwise, loads from cache.
+        - `disabled` (list of strings) (optional)
+            - Specifies modules to disable.
+            - The specified modules and their submodules will be ignored.
+            - Example:
+                ```toml
+                disabled = [
+                    "spam.ham" # Ignores modules under /modules/spam/ham.
+                ]
+                ```
+        - `priorities` (list of strings) (optional)
+            - Specifies the loading order of modules.
+            - Example:
+                ```toml
+                # Registers spam first, followed by eggs in Blender.
+                priorities = [
+                    "spam",
+                    "eggs"
+                ]
+                ```
+- [decorators](/core/loader/decorators.py)
+    - Configures information about add-on-related classes in modules.
+        - `@disable` decorator
+            - Classes with this decorator are ignored during loading.
+        - `@priority` decorator
+            - Classes with smaller priority numbers are loaded first.
+            - Only compared within the same module.
 
 ### Keymap Management ([KeymapManager](/features/keymap_manager.py))
 - Abstracts keymap management.
@@ -83,9 +84,9 @@ def register() -> None:
 def register() -> None:
     PropertiesManager().add(bpy.types.Scene, ("your_prop_name", Your_PropertyGroup))
 # Usage
-PropertiesManager().get(bpy.context.scene, "your_prop_name")
-value = prop.get("your_prop_attribute") # Get property
-prop.set("your_prop_attribute", True)   # Set property
+PropertiesManager().get(bpy.context.scene, "your_prop_name") # The type of "prop" is Property.
+value = prop.get("your_prop_attribute") # Gets the value of a property
+prop.set("your_prop_attribute", True)   # Sets the value of a property
 ```
 
 ### Constants ([constants](/constants.py))
