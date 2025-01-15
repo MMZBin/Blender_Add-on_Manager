@@ -8,7 +8,7 @@
 # pyright: reportAttributeAccessIssue = false
 
 from bpy.types import bpy_struct
-from .core.loader.addon_module import AddonClass
+from .loader.addon_module import AddonClass
 
 def generate_addon_message(message: str) -> str:
     return f'[AddonManager] {message}'

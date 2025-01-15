@@ -18,15 +18,15 @@ Place this repository in your project folder and create modules within the `modu
 - Abstraction of custom property registration, retrieval, and unregistration
 - Provision of some predefined constants
 
-### Add-on Class Management ([AddonManager](/manager/addon_manager.py))
+### Add-on Class Management ([AddonManager](/addon_manager.py))
 - Automatically retrieves and registers/unregisters modules within the `modules` folder and the classes related to add-ons defined in them (`bpy.types.bpy_struct` subclasses).
 - If the file system is scanned (when `is_debug_mode = true` or `module.pkl` does not exist), logs will be displayed in the console during startup.
-    - Once loading is complete, a `modules.pkl` file will be created under the [data](/manager/data/) folder. If `is_debug_mode = false`, modules will be loaded from this cache.
+    - Once loading is complete, a `modules.pkl` file will be created under the [data](/data/) folder. If `is_debug_mode = false`, modules will be loaded from this cache.
 
 - If a `register()` function or `unregister()` function exists in each module, they will be called during the add-on registration and unregistration process.
-    - If these functions take arguments, the corresponding [AddonManager](/manager/addon_manager.py) instance will be passed as an argument.
+    - If these functions take arguments, the corresponding [AddonManager](/addon_manager.py) instance will be passed as an argument.
     - These functions will not be called if the module is specified in `disabled`.
-        - [config.toml](/manager/data/config.toml)
+        - [config.toml](/data/config.toml)
             - Stores settings related to loading.
                 - `is_debug_mode` (boolean)
                     - Specifies whether to enable debug mode.
@@ -51,7 +51,7 @@ Place this repository in your project folder and create modules within the `modu
                             "eggs"
                         ]
                         ```
-        - [decorators](/manager/core/loader/decorators.py)
+        - [decorators](/core/loader/decorators.py)
             - Configures information about add-on-related classes in modules.
                 - `@disable` decorator
                     - Classes with this decorator are ignored during loading.
@@ -59,7 +59,7 @@ Place this repository in your project folder and create modules within the `modu
                     - Classes with smaller priority numbers are loaded first.
                     - Only compared within the same module.
 
-### Keymap Management ([KeymapManager](/manager/features/keymap_manager.py))
+### Keymap Management ([KeymapManager](/features/keymap_manager.py))
 - Abstracts keymap management.
 - Implemented as a singleton class.
 - Use the `add()` method to register keymaps and the `delete()` method to remove them.
@@ -70,10 +70,12 @@ def register() -> None:
     KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
-### Custom Property Management ([PropertiesManager](/manager/features/properties_manager.py))
+### Custom Property Management ([PropertiesManager](/features/properties_manager.py))
 - Abstracts custom property management.
 - Implemented as a singleton class.
+- Add `[add-on folder name]_` to the property name to avoid name conflicts.
 - Use the `add()` method to register properties and the `delete()` method to remove them.
+- Get a property with the `get()` method. __Note__ that it is a [Property](/features/properties_manager.py) object, not the property itself.
 - Properties are automatically removed when the add-on itself is unregistered from Blender.
 - Example:
 ```python
@@ -84,8 +86,67 @@ def register() -> None:
 PropertiesManager().get(bpy.context.scene, "your_prop_name")
 ```
 
-### Constants ([constants](/manager/constants.py))
+### Constants ([constants](/constants.py))
 - Includes constants for values such as return codes for the `execute()` method of operators and object types.
+
+## Samples
+Example of folder structure:
+```
+your_addon/
+├── manager/
+│   ├── core
+│   │   └── ...omitted...
+│   ├── features
+│   │   └── ...omitted...
+│   └── ...omitted...
+├── modules/
+│   └── [Place your modules here]
+├── __init__.py
+└── blender_manifest.toml
+```
+Example of `__init__.py`:
+```python
+from .manager.addon_manager import AddonManager
+
+addon = AddonManager()
+
+# The AddonManager.register() and unregister() methods must be called when an add-on is registered and unregistered.
+
+def register() -> None:
+    addon.register()
+
+
+def unregister() -> None:
+    addon.unregister()
+
+```
+Example of module (panel):
+
+`/modules/sample_panel.py`
+```python
+from bpy.types import Panel, Context
+
+class SamplePanel(Panel):
+    bl_label = "Sample operator"
+    bl_idname = "VIEW3D_PT_sample_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'sample'
+
+    def draw(self, context: Context) -> None:
+        layout = self.layout
+
+        layout.label(text="This is sample panel.")
+
+# These functions are not required.
+
+def register() -> None:
+    print("sample_panel.py is now registered.")
+
+def unregister() -> None:
+    print("sample_panel.py is now unregistered.")
+
+```
 
 ## Notes
 - When importing modules, using the editor's auto-completion (in the form `from manager. ...`) may result in runtime errors.

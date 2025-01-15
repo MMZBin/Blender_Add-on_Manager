@@ -18,7 +18,7 @@ from pathlib import Path
 from bpy.types import bpy_struct
 
 from.addon_module import AddonClass, Module, Modules
-from ... import utils
+from .. import utils
 
 if TYPE_CHECKING:
     from manager.core.loader.cache_loader import ModuleLoader

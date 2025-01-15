@@ -9,7 +9,7 @@ from bpy.types import PropertyGroup
 from bpy.props import PointerProperty # type: ignore
 from bpy import types
 from ..exceptions import generate_exception_message
-from .. import utils
+from ..core import utils
 
 class Property:
     """Holds information on properties."""

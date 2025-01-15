@@ -28,7 +28,14 @@ def disable(cls: type) -> type:
     return cls
 
 def priority(pr: int) -> Callable[[type], type]:
-    """The smaller the number in the same module, the more priority is given to loading."""
+    """The smaller the number in the same module, the more priority is given to loading.
+
+    Args:
+        pr (int):Priority of this class in the module (the smaller the priority, the higher)
+
+    Returns:
+        Callable[[type], type]: Decorator body
+    """
     def _priority(cls: type) -> type:
         if not issubclass(cls, bpy_struct):
             raise TypeError(generate_exception_message('"priority" decorator can only be applied to Blender classes.'))

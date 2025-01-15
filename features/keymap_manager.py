@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from bpy import context
 from bpy.types import KeyMap, KeyMapItem
 
-from .. import utils
+from ..core import utils
 
 @dataclass
 class Key:

@@ -5,8 +5,8 @@
 
 from __future__ import annotations
 
-from types import ModuleType
 from typing import TYPE_CHECKING, List
+from types import ModuleType
 
 from importlib import import_module
 from modulefinder import ModuleFinder
