@@ -84,6 +84,8 @@ def register() -> None:
     PropertiesManager().add(bpy.types.Scene, ("your_prop_name", Your_PropertyGroup))
 # Usage
 PropertiesManager().get(bpy.context.scene, "your_prop_name")
+value = prop.get("your_prop_attribute") # Get property
+prop.set("your_prop_attribute", True)   # Set property
 ```
 
 ### Constants ([constants](/constants.py))

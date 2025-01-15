@@ -21,7 +21,7 @@ from.addon_module import AddonClass, Module, Modules
 from .. import utils
 
 if TYPE_CHECKING:
-    from manager.core.loader.cache_loader import ModuleLoader
+    from .cache_loader import ModuleLoader
 
 class ModuleFinder:
     """Scan modules and addon classes from the file system."""

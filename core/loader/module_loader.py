@@ -22,7 +22,7 @@ from .module_finder import ModuleFinder
 from .cache_loader import CacheLoader
 
 if TYPE_CHECKING:
-    from manager.addon_manager import AddonManager
+    from ...addon_manager import AddonManager
 
 class ModuleLoader:
     """Retrieve modules and classes."""

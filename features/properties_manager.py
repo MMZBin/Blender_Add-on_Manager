@@ -22,25 +22,32 @@ class Property:
         setattr(self.__prop_type, self.__name, self.__prop)
     @property
     def prop_type(self) -> type:
+        """Returns the type for which the property is registered."""
         return self.__prop_type
     @property
     def prop(self) -> types.PointerProperty:
+        """property (PointerProperty)."""
         return self.__prop
     @property
     def name(self) -> str:
+        """Returns the property name."""
         return self.__name
 
-    def get(self, attr: str) -> Any:
+    def get(self, attr: str) -> Any | None:
+        """Gets the value of the property. Returns None if the property does not exist."""
         if not hasattr(self.context, self.__name):
-            return attr
+            return None
 
         return getattr(getattr(self.context, self.__name), attr)
 
-    def set(self, attr: str, value: Any) -> None:
+    def set(self, attr: str, value: Any) -> bool:
+        """Sets the value of the property. Returns True on success, False on failure."""
         if not hasattr(self.context, self.__name):
-            return
+            return False
 
         setattr(getattr(self.context, self.__name), attr, value)
+
+        return True
 
 class PropertiesManager:
     """manage properties."""

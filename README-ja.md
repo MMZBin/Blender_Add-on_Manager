@@ -83,7 +83,9 @@ def register() -> None:
 def register() -> None:
     PropertiesManager().add(bpy.types.Scene, ("your_prop_name", Your_PropertyGroup))
 #使用
-PropertiesManager().get(bpy.context.scene, "your_prop_name")
+prop  = PropertiesManager().get(bpy.context.scene, "your_prop_name")
+value = prop.get("your_prop_attribute") # プロパティを取得する
+prop.set("your_prop_attribute", True)   # プロパティを設定する
 ```
 
 ### 定数([constants](/constants.py))
