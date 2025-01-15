@@ -2,7 +2,7 @@
 
 __Note: The English used in this project is based on machine translation from Japanese and may contain unnatural expressions.__
 
-[日本語のREADMEはこちらから](/README.ja.MD)
+[日本語のREADMEはこちらから](/README-ja.md)
 
 ## Overview
 Blender Add-on Manager is a framework designed to support Blender add-on development using the Blender Python API.
