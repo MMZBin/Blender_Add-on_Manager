@@ -23,7 +23,7 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
 - `modules`フォルダ内に存在するモジュールとその中で定義されているアドオンに関連するクラス(`bpy.types.bpy_struct`を継承しているクラス)を自動で取得し、Blenderに登録/解除します。
 - ファイルシステムをスキャンした場合(`is_debug_mode = true`か`module.pkl`が存在しない場合)、起動時にコンソールにログが表示されます。
     - 読み込みが完了すると[data](/data/)フォルダ以下に`modules.pkl`が作成され、`is_debug_mode = false`の場合はこのキャッシュからモジュールを読み込みます。
-    -  __特別な理由がない限り、アドオンをデプロイする際は`is_debug_mode = false`に設定したうえで`modules.pkl`を含めないようにするほうが良いでしょう。__
+    -  __特別な理由がない限り、アドオンをリリースする際は`is_debug_mode = false`に設定したうえで`modules.pkl`を含めないようにするほうが良いでしょう。__
 - 各モジュール内に`register()`関数や`unregister()`関数が存在する場合、アドオンの登録時と解除時に呼び出されます。
     - もしこれらの関数が引数を取る場合、対応する[AddonManager](/addon_manager.py)インスタンスが渡されます。
     - モジュールが`disabled`に指定されている場合は呼び出されません。
