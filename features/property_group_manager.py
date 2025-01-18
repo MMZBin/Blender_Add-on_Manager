@@ -26,10 +26,11 @@ PropertyGroupWithTypeHint = tuple[Type[PropertyGroup], Type[T]]
 
 class PropertyGroupManager:
     """Manage PropertyGroups."""
+    __properties: Dict[type, List[str]] = defaultdict(lambda: [])
+
     @classmethod
     def init(cls, addon: AddonManager) -> None:
         cls.ADDON = addon
-        cls.__properties: Dict[type, List[str]] = defaultdict(lambda: [])
 
     @classmethod
     def generate_property_name(cls, name: str, key: str="default") -> str:
