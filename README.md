@@ -83,7 +83,7 @@ def register() -> None:
 ### Property group Management ([PropertyGroupManager](/features/property_group_manager.py))
 - Abstracts the management of property groups.
 - Static class.
-- Properties are registered based on their type and key, and attached to Blender in the form of `[addon_folder_name]_[property_class]_[key]`.
+- Properties are registered based on their type and key, and attached to Blender in the form of `[addon_folder_name]_[property_class]_[ID(PropertyGroup or type hint class)]_[key]`.
 - Use the `add()` method to register properties and the `delete()` method to remove them.
 - Retrieve properties using the `get()` method.
 - property groups are automatically removed when the add-on itself is unregistered from Blender.
