@@ -3,7 +3,7 @@
 # This software is released under the MIT License.
 # https://opensource.org/licenses/MIT
 
-from typing import Any, List, Self, Tuple
+from typing import List, Tuple
 
 from dataclasses import dataclass
 
@@ -30,22 +30,10 @@ class Key:
 
 class KeymapManager:
     """manage keymap."""
-    __instance: Self | None = None
-    __is_initialized: bool = False
+    __keymap_data: List[Tuple[KeyMap, KeyMapItem]] = []
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-        return cls.__instance
-
-    def __init__(self) -> None:
-        if self.__class__.__is_initialized:
-            return
-        self.__class__.__is_initialized = True
-
-        self.__keymap_data: List[Tuple[KeyMap, KeyMapItem]] = []
-
-    def add(self, keys: List[Key] | Key,
+    @classmethod
+    def add(cls, keys: List[Key] | Key,
             name: str = 'Window', space_type: str = 'EMPTY', region_type: str = 'WINDOW',
             modal: bool = False, tool: bool = False) -> List[Tuple[KeyMap, KeyMapItem]]:
         """_summary_
@@ -89,11 +77,12 @@ class KeymapManager:
 
             keymap_data.append((keymap, keymap_item))
 
-        self.__keymap_data += keymap_data
+        cls.__keymap_data += keymap_data
 
         return keymap_data
 
-    def delete(self, subject: Tuple[KeyMap, KeyMapItem] | type) -> bool:
+    @classmethod
+    def delete(cls, subject: Tuple[KeyMap, KeyMapItem] | type) -> bool:
         """Deletes the specified key.
 
         Args:
@@ -105,22 +94,23 @@ class KeymapManager:
         if type(subject) == tuple:
             try:
                 subject[0].keymap_items.remove(subject[1])
-                self.__keymap_data.remove(subject)
+                cls.__keymap_data.remove(subject)
                 return True
             except ValueError:
                 return False
         else:
             is_deleted = False
-            for keymap, keymap_item in self.__keymap_data:
+            for keymap, keymap_item in cls.__keymap_data:
                 if not keymap_item.idname == subject.bl_idname: # type: ignore
                     continue
                 keymap.keymap_items.remove(keymap_item)
                 is_deleted = True
             return is_deleted
 
-    def unregister(self) -> None:
+    @classmethod
+    def unregister(cls) -> None:
         """Deletes all keymap registered in this class."""
-        for kms in self.__keymap_data:
-            self.delete(kms)
+        for kms in cls.__keymap_data:
+            cls.delete(kms)
 
-        self.__keymap_data.clear()
+        cls.__keymap_data.clear()

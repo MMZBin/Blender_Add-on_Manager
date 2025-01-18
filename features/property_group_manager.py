@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Self, Type, Any, TypeVar
+from typing import TYPE_CHECKING, Dict, List, Type, TypeVar
 
 from collections import defaultdict
 
@@ -26,31 +26,18 @@ PropertyGroupWithTypeHint = tuple[Type[PropertyGroup], Type[T]]
 
 class PropertyGroupManager:
     """Manage PropertyGroups."""
-    __instance: Self | None = None
-    __is_initialized: bool = False
+    @classmethod
+    def init(cls, addon: AddonManager) -> None:
+        cls.ADDON = addon
+        cls.__properties: Dict[type, List[str]] = defaultdict(lambda: [])
 
-    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-        return cls.__instance
-
-    def __init__(self, addon: AddonManager | None=None) -> None:
-        if self.__class__.__is_initialized:
-            return
-        self.__class__.__is_initialized = True
-
-        if addon is None:
-            raise TypeError(generate_exception_message("When initializing the PropertiesManager instance, you need to specify Addon."))
-
-        self.ADDON: AddonManager = addon
-
-        self.__properties: Dict[type, List[str]] = defaultdict(lambda: [])
-
-    def generate_property_name(self, name: str, key: str="default") -> str:
+    @classmethod
+    def generate_property_name(cls, name: str, key: str="default") -> str:
         """Generates property names from names and keys."""
-        return '_'.join((self.ADDON.ADDON_FOLDER_NAME, name, key))
+        return '_'.join((cls.ADDON.ADDON_FOLDER_NAME, name, key))
 
-    def add(self, target_type: Type[bpy_struct], prop_type: Type[PropertyGroup], key: str="default") -> bool:
+    @classmethod
+    def add(cls, target_type: Type[bpy_struct], prop_type: Type[PropertyGroup], key: str="default") -> bool:
         """Add PropertyGroup.
 
         Args:
@@ -67,7 +54,7 @@ class PropertyGroupManager:
         if is_disabled(target_type):
             return False
 
-        attr_name = self.generate_property_name(prop_type.__name__, key)
+        attr_name = cls.generate_property_name(prop_type.__name__, key)
 
         if hasattr(target_type, attr_name):
             prop = getattr(target_type, attr_name)
@@ -78,11 +65,12 @@ class PropertyGroupManager:
 
         setattr(target_type, attr_name, props.PointerProperty(type=prop_type))
 
-        self.__properties[target_type].append(attr_name)
+        cls.__properties[target_type].append(attr_name)
 
         return True
 
-    def get(self, obj: object, prop_type: Type[T], key: str="default") -> T:
+    @classmethod
+    def get(cls, obj: object, prop_type: Type[T], key: str="default") -> T:
         """Gets the PropertyGroup.
 
         Args:
@@ -99,7 +87,7 @@ class PropertyGroupManager:
         """
         prop_type_name = prop_type.__name__.removesuffix("Type")
 
-        attr_name = self.generate_property_name(prop_type_name, key)
+        attr_name = cls.generate_property_name(prop_type_name, key)
 
         if hasattr(obj, attr_name):
             prop = getattr(obj, attr_name)
@@ -114,7 +102,8 @@ class PropertyGroupManager:
         raise ValueError(f'''The property "{attr_name} does not exist in "{type(obj).__name__}".
                              Please make sure that the class and key are correct.''')
 
-    def delete(self, prop_type: Type[PropertyGroup], key: str="default") -> bool:
+    @classmethod
+    def delete(cls, prop_type: Type[PropertyGroup], key: str="default") -> bool:
         """Deletes the specified PropertyGroup.
 
         Args:
@@ -127,11 +116,11 @@ class PropertyGroupManager:
         Returns:
             bool: Whether the property was actually deleted.
         """
-        for prop in self.__properties.copy().keys():
+        for prop in cls.__properties.copy().keys():
             if not prop == prop_type:
                 continue
 
-            attr_name = self.generate_property_name(prop_type.__name__, key)
+            attr_name = cls.generate_property_name(prop_type.__name__, key)
 
             try:
                 delattr(prop, attr_name)
@@ -139,7 +128,7 @@ class PropertyGroupManager:
                 raise AttributeError(f'Property "{attr_name}" does not exists in "{prop_type.__name__}.') from e
 
             try:
-                self.__properties[prop].remove(attr_name)
+                cls.__properties[prop].remove(attr_name)
             except ValueError:
                 pass
 

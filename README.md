@@ -71,18 +71,18 @@ Place this repository in your project folder and create modules within the `modu
 
 ### Keymap Management ([KeymapManager](/features/keymap_manager.py))
 - Abstracts keymap management.
-- Implemented as a singleton class.
+- Static class.
 - Use the `add()` method to register keymaps and the `delete()` method to remove them.
 - Keymaps are automatically removed when the add-on itself is unregistered from Blender.
 - Example:
 ```python
 def register() -> None:
-    KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
+    KeymapManager.add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
 ### Property group Management ([PropertyGroupManager](/features/property_group_manager.py))
 - Abstracts the management of property groups.
-- It is a singleton class.
+- Static class.
 - Properties are registered based on their type and key, and attached to Blender in the form of `[addon_folder_name]_[property_class]_[key]`.
 - Use the `add()` method to register properties and the `delete()` method to remove them.
 - Retrieve properties using the `get()` method.
@@ -106,13 +106,13 @@ class Your_PropertyGroupType:
 
 # Registration
 def register() -> None:
-    PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup) # Type definition classes cannot be used here.
-    # PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup, "custom_key") # By specifying a key, you can register multiple properties of the same type.
+    PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup) # Type definition classes cannot be used here.
+    # PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, "custom_key") # By specifying a key, you can register multiple properties of the same type.
 
 # Usage
-prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType) # Retrieves the property of the specified type and key.
-# prop = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType, "custom_key")
-# prop = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroup) # If you do not use type definitions, specify the type of the property body.
+prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroupType) # Retrieves the property of the specified type and key.
+# prop = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroupType, "custom_key")
+# prop = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroup) # If you do not use type definitions, specify the type of the property body.
 
 value = prop.bool_prop # Retrieve a property
 prop.int_prop = 100    # Set a property

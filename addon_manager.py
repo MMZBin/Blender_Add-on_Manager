@@ -29,7 +29,7 @@ class AddonManager:
 
         self.__modules: Modules | None = None                                     # All modules and operators
 
-        PropertyGroupManager(self) # 初期化のため
+        PropertyGroupManager.init(self) # 初期化のため
 
     def register(self) -> None:
         """Register the add-on with Blender."""

@@ -71,18 +71,18 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
 
 ### キーマップ管理機能([KeymapManager](/features/keymap_manager.py))
 - キーマップの管理を抽象化します。
-- シングルトンクラスです。
+- 静的クラスです。
 - `add()`メソッドでキーマップを登録し、`delete()`メソッドで削除します。
 - アドオン自体がBlenderから解除される際は自動でキーマップも削除されます。
 - 例:
 ```python
 def register() -> None:
-    KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
+    KeymapManager.add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
 ### プロパティグループ管理機能([PropertyGroupManager](/features/property_group_manager.py))
 - プロパティグループの管理を抽象化します。
-- シングルトンクラスです。
+- 静的クラスです。
 - 型とキーを元にプロパティを登録し、`[アドオンフォルダ名]_[プロパティクラス]_[キー]`の形でBlenderにアタッチします。
 - `add()`メソッドでプロパティを登録し、`delete()`メソッドで削除します。
 - `get()`メソッドでプロパティを取得します。
@@ -106,13 +106,13 @@ class Your_PropertyGroupType:
 
 # 登録
 def register() -> None:
-    PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup) # ここでは型定義用のクラスは使用できません。
-    # PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup, "custom_key") # keyを指定することで同じ型の複数のプロパティを登録できます。
+    PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup) # ここでは型定義用のクラスは使用できません。
+    # PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, "custom_key") # keyを指定することで同じ型の複数のプロパティを登録できます。
 
 #使用
-prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType) # 指定した型とキーのプロパティを取得します。
-# prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType, "custom_key")
-# prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroup) # 型定義を利用しない場合はプロパティ本体の型を指定してください。
+prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroupType) # 指定した型とキーのプロパティを取得します。
+# prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroupType, "custom_key")
+# prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroup) # 型定義を利用しない場合はプロパティ本体の型を指定してください。
 
 value = prop.bool_prop # プロパティの取得
 prop.int_prop = 100    # プロパティの設定
