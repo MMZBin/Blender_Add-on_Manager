@@ -7,7 +7,7 @@ __注意: このプロジェクトで使用されている英語は日本語か�
 ## 概要
 Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発を支援するフレームワークです。
 
-アドオンに関連するクラスの登録や解除、キーマップやカスタムプロパティの管理などを抽象化します。
+アドオンに関連するクラスの登録や解除、キーマップやプロパティの管理などを抽象化します。
 
 ## 使い方
 プロジェクトフォルダにこのリポジトリを配置し、同じ階層の`modules`フォルダにモジュールを作成することで機能します。
@@ -15,12 +15,13 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
 ## 機能
 - アドオンに関連するクラス(`Operator`, `Panel`, `PropertyGroup`やその他)の登録、解除の自動化
 - キーマップの登録、解除の抽象化
-- カスタムプロパティの登録、取得、解除の抽象化
+- プロパティグループの登録、取得、解除の抽象化と型定義の提供
 - 一部の定数を提供
 
 
 ### アドオンクラス管理機能([AddonManager](/addon_manager.py))
 - `modules`フォルダ内に存在するモジュールとその中で定義されているアドオンに関連するクラス(`bpy.types.bpy_struct`を継承しているクラス)を自動で取得し、Blenderに登録/解除します。
+    - ただし、`bpy.types.WorkSpaceTool`のサブクラスは除外しているので手動で登録してください。
 - ファイルシステムをスキャンした場合(`is_debug_mode = true`か`module.pkl`が存在しない場合)、起動時にコンソールにログが表示されます。
     - 読み込みが完了すると[data](/data/)フォルダ以下に`modules.pkl`が作成され、`is_debug_mode = false`の場合はこのキャッシュからモジュールを読み込みます。
     -  __特別な理由がない限り、アドオンをリリースする際は`is_debug_mode = false`に設定したうえで`modules.pkl`を含めないようにするほうが良いでしょう。__
@@ -52,6 +53,14 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
                     "eggs"
                 ]
                 ```
+        - `exclude_patterns`(list of string)(任意)
+            - この項目に指定した文字列は無視されます。
+            - 例
+            ```toml
+                exclude_patterns = [
+                    "__" # パスに"__"を含むモジュールが無視されます。
+                ]
+            ```
 - [decorators](/core/loader/decorators.py)
     - モジュール内のアドオンクラスに関する情報を設定します。
         - `@disable`デコレータ
@@ -71,22 +80,42 @@ def register() -> None:
     KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
-### カスタムプロパティ管理機能([PropertiesManager](/features/properties_manager.py))
-- カスタムプロパティの管理を抽象化します。
+### プロパティグループ管理機能([PropertyGroupManager](/features/property_group_manager.py))
+- プロパティグループの管理を抽象化します。
 - シングルトンクラスです。
-- 名前の衝突を避けるため、`[アドオンフォルダ名]_`をプロパティ名に追加します。
+- 型とキーを元にプロパティを登録し、`[アドオンフォルダ名]_[プロパティクラス]_[キー]`の形でBlenderにアタッチします。
 - `add()`メソッドでプロパティを登録し、`delete()`メソッドで削除します。
-- `get()`メソッドでプロパティを取得します。プロパティそのものではなく[Property](/features/properties_manager.py)オブジェクトであることに __注意__ してください。
+- `get()`メソッドでプロパティを取得します。
 - アドオン自体がBlenderから解除される際は自動でプロパティも削除されます。
+- 設定することで各プロパティに対する型定義を利用することができますが、プロパティ本体と型定義のフィールド名や型に食い違いがあると型ヒントが正しく動作しません。
+    - 実際には、警告を無視してプロパティ型のオブジェクトを型定義用の型に割り当てているだけです。
 - 例:
 ```python
+# プロパティグループの定義の例
+
+# プロパティ本体
+class Your_PropertyGroup(bpy.types.PropertyGroup):
+    bool_prop: bpy.props.BoolProperty(name="Your bool prop")
+    int_prop:  bpy.props.IntProperty(name="Your int prop")
+
+# 型定義(プロパティ本体名の後ろに"Type"を付けてください。)(任意)
+# このクラスは型データの付与にのみ使用され、実際のデータには影響を与えません。
+class Your_PropertyGroupType:
+    bool_prop: bool
+    int_prop: int
+
 # 登録
 def register() -> None:
-    PropertiesManager().add(bpy.types.Scene, ("your_prop_name", Your_PropertyGroup))
+    PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup) # ここでは型定義用のクラスは使用できません。
+    # PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup, "custom_key") # keyを指定することで同じ型の複数のプロパティを登録できます。
+
 #使用
-prop  = PropertiesManager().get(bpy.context.scene, "your_prop_name") # propの型はPropertyです。
-value = prop.get("your_prop_attribute") # プロパティの値を取得する
-prop.set("your_prop_attribute", True)   # プロパティの値を設定する
+prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType) # 指定した型とキーのプロパティを取得します。
+# prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType, "custom_key")
+# prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroup) # 型定義を利用しない場合はプロパティ本体の型を指定してください。
+
+value = prop.bool_prop # プロパティの取得
+prop.int_prop = 100    # プロパティの設定
 ```
 
 ### 定数([constants](/constants.py))

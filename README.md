@@ -7,7 +7,7 @@ __Note: The English used in this project is based on machine translation from Ja
 ## Overview
 Blender Add-on Manager is a framework designed to support Blender add-on development using the Blender Python API.
 
-It abstracts tasks such as registering and unregistering add-on-related classes, managing keymaps, and handling custom properties.
+It abstracts tasks such as registering and unregistering add-on-related classes, managing keymaps, and handling properties.
 
 ## Usage
 Place this repository in your project folder and create modules within the `modules` folder to enable its functionality.
@@ -15,11 +15,12 @@ Place this repository in your project folder and create modules within the `modu
 ## Features
 - Automation of registering and unregistering add-on-related classes (`Operator`, `Panel`, `PropertyGroup`, etc.)
 - Abstraction of keymap registration and unregistration
-- Abstraction of custom property registration, retrieval, and unregistration
+- Abstraction of property group registration, retrieval, unregistration, and type definition provision.
 - Provision of some predefined constants
 
 ### Add-on Class Management ([AddonManager](/addon_manager.py))
 - Automatically retrieves and registers/unregisters modules within the `modules` folder and the classes related to add-ons defined in them (`bpy.types.bpy_struct` subclasses).
+    - However, subclasses of `bpy.types.WorkSpaceTool` are excluded, so please register them manually.
 - If the file system is scanned (when `is_debug_mode = true` or `module.pkl` does not exist), logs will be displayed in the console during startup.
     - Once loading is complete, a `modules.pkl` file will be created under the [data](/data/) folder. If `is_debug_mode = false`, modules will be loaded from this cache.
     - __Unless there is a special reason, it is better to set `is_debug_mode = false` and not include `modules.pkl` when releasing your add-ons.__
@@ -52,6 +53,14 @@ Place this repository in your project folder and create modules within the `modu
                     "eggs"
                 ]
                 ```
+        - `exclude_patterns`(list of string)(optional)
+            - The strings specified in this field are ignored.
+            - Example:
+            ```toml
+                exclude_patterns = [
+                    "__" # Modules with "__" in the path will be ignored.
+                ]
+            ```
 - [decorators](/core/loader/decorators.py)
     - Configures information about add-on-related classes in modules.
         - `@disable` decorator
@@ -71,22 +80,42 @@ def register() -> None:
     KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
-### Custom Property Management ([PropertiesManager](/features/properties_manager.py))
-- Abstracts custom property management.
-- Implemented as a singleton class.
-- Add `[add-on folder name]_` to the property name to avoid name conflicts.
+### Property group Management ([PropertyGroupManager](/features/property_group_manager.py))
+- Abstracts the management of property groups.
+- It is a singleton class.
+- Properties are registered based on their type and key, and attached to Blender in the form of `[addon_folder_name]_[property_class]_[key]`.
 - Use the `add()` method to register properties and the `delete()` method to remove them.
-- Get a property with the `get()` method. __Note__ that it is a [Property](/features/properties_manager.py) object, not the property itself.
-- Properties are automatically removed when the add-on itself is unregistered from Blender.
+- Retrieve properties using the `get()` method.
+- property groups are automatically removed when the add-on itself is unregistered from Blender.
+- By setting type definitions for each property, you can utilize type hinting, but if there are mismatches between the field names or types of the property and its type definition, the type hint may not work correctly.
+    - In practice, it simply assigns the property type object to the type definition type, ignoring warnings.
 - Example:
 ```python
+# Example of defining a property group
+
+# The property body
+class Your_PropertyGroup(bpy.types.PropertyGroup):
+    bool_prop: bpy.props.BoolProperty(name="Your bool prop")
+    int_prop:  bpy.props.IntProperty(name="Your int prop")
+
+# Type definition (append "Type" to the name of the property body class) (optional)
+# This class is used only for type annotations and does not affect the actual data.
+class Your_PropertyGroupType:
+    bool_prop: bool
+    int_prop: int
+
 # Registration
 def register() -> None:
-    PropertiesManager().add(bpy.types.Scene, ("your_prop_name", Your_PropertyGroup))
+    PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup) # Type definition classes cannot be used here.
+    # PropertyGroupManager().add(bpy.types.Scene, Your_PropertyGroup, "custom_key") # By specifying a key, you can register multiple properties of the same type.
+
 # Usage
-PropertiesManager().get(bpy.context.scene, "your_prop_name") # The type of "prop" is Property.
-value = prop.get("your_prop_attribute") # Gets the value of a property
-prop.set("your_prop_attribute", True)   # Sets the value of a property
+prop  = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType) # Retrieves the property of the specified type and key.
+# prop = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroupType, "custom_key")
+# prop = PropertyGroupManager().get(bpy.context.scene, Your_PropertyGroup) # If you do not use type definitions, specify the type of the property body.
+
+value = prop.bool_prop # Retrieve a property
+prop.int_prop = 100    # Set a property
 ```
 
 ### Constants ([constants](/constants.py))

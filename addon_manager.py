@@ -8,9 +8,10 @@ from os.path import join, dirname, basename
 import inspect
 
 from bpy.utils import register_class, unregister_class # type: ignore
+from bpy.types import WorkSpaceTool
 
 from .config import Config
-from .features.properties_manager import PropertiesManager
+from .features.property_group_manager import PropertyGroupManager
 from .features.keymap_manager import KeymapManager
 
 from .core.loader.module_loader import ModuleLoader
@@ -28,7 +29,7 @@ class AddonManager:
 
         self.__modules: Modules | None = None                                     # All modules and operators
 
-        PropertiesManager(self.ADDON_FOLDER_NAME) # 初期化のため
+        PropertyGroupManager(self) # 初期化のため
 
     def register(self) -> None:
         """Register the add-on with Blender."""
@@ -38,7 +39,8 @@ class AddonManager:
         self.__modules = ModuleLoader(self).load()
 
         for cls in self.__modules.classes:
-            register_class(cls)
+            if not issubclass(cls, WorkSpaceTool):
+                register_class(cls)
 
         self.__call_modules_func("register")
 
@@ -61,11 +63,12 @@ class AddonManager:
             raise ValueError('The "unregister" method must be called after the "register" method.')
 
         for cls in reversed(self.__modules.classes):
-            unregister_class(cls)
+            if not issubclass(cls, WorkSpaceTool):
+                unregister_class(cls)
 
         self.__call_modules_func("unregister")
         KeymapManager().unregister()
-        PropertiesManager().unregister()
+        PropertyGroupManager().unregister()
 
     def __call_modules_func(self, identifier: str) -> None:
         """Calls a function contained in the module."""
