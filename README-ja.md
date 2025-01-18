@@ -80,7 +80,7 @@ def register() -> None:
     KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
-### プロパティグループ管理機能([PropertyGroupManager](/manager/features/property_group_manager.py))
+### プロパティグループ管理機能([PropertyGroupManager](/features/property_group_manager.py))
 - プロパティグループの管理を抽象化します。
 - シングルトンクラスです。
 - 型とキーを元にプロパティを登録し、`[アドオンフォルダ名]_[プロパティクラス]_[キー]`の形でBlenderにアタッチします。
