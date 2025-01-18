@@ -106,7 +106,7 @@ class Your_PropertyGroupType:
 
 # Registration
 def register() -> None:
-    PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, Your_PropertyGroupType) # Type definition classes cannot be used here.
+    PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, Your_PropertyGroupType)
     # PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, Your_PropertyGroupType, "custom_key") # By specifying a key, you can register multiple properties of the same type.
 
 # Usage
