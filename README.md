@@ -80,7 +80,7 @@ def register() -> None:
     KeymapManager().add(Key(Your_Operator, "F1", "PRESS"))
 ```
 
-### Property group Management ([PropertyGroupManager](/features/property_group_manager.py))
+### Property group Management ([PropertyGroupManager](/manager/features/property_group_manager.py))
 - Abstracts the management of property groups.
 - It is a singleton class.
 - Properties are registered based on their type and key, and attached to Blender in the form of `[addon_folder_name]_[property_class]_[key]`.
