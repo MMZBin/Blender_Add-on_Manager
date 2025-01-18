@@ -106,11 +106,11 @@ class Your_PropertyGroupType:
 
 # 登録
 def register() -> None:
-    PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup) # ここでは型定義用のクラスは使用できません。
-    # PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, "custom_key") # keyを指定することで同じ型の複数のプロパティを登録できます。
+    PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, Your_PropertyGroupType) # ここでは型定義用のクラスは使用できません。
+    # PropertyGroupManager.add(bpy.types.Scene, Your_PropertyGroup, Your_PropertyGroupType, "custom_key") # keyを指定することで同じ型の複数のプロパティを登録できます。
 
 #使用
-prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroupType) # 指定した型とキーのプロパティを取得します。
+prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroupType) # 指定した型とキーのプロパティを取得します。(型定義を使用した場合はそのクラスを使ってアクセスしないと動作しません。)
 # prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroupType, "custom_key")
 # prop  = PropertyGroupManager.get(bpy.context.scene, Your_PropertyGroup) # 型定義を利用しない場合はプロパティ本体の型を指定してください。
 

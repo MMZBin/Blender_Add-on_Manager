@@ -33,16 +33,17 @@ class PropertyGroupManager:
         cls.ADDON = addon
 
     @classmethod
-    def generate_property_name(cls, name: str, key: str="default") -> str:
+    def generate_property_name(cls, name: str, key: str, id: int) -> str:
         """Generates property names from names and keys."""
-        return '_'.join((cls.ADDON.ADDON_FOLDER_NAME, name, key))
+        return '_'.join((cls.ADDON.ADDON_FOLDER_NAME, str(id), name, key))
 
     @classmethod
-    def add(cls, target_type: Type[bpy_struct], prop_type: Type[PropertyGroup], key: str="default") -> bool:
+    def add(cls, target_type: Type[bpy_struct], prop_type: Type[PropertyGroup], type_hint: type | None=None, key: str="default") -> bool:
         """Add PropertyGroup.
 
         Args:
             target_type (Type[bpy_struct]): Class to add property groups(for example: bpy.types.Scene).
+            type_hint (type | None, optional): Class used for type definition. The property group and attributes must match. Defaults to "None"
             prop_type (Type[PropertyGroup]): PropertyGroup to be added.
             key (str, optional): Key to identify PropertyGroups of the same type. Defaults to "default".
 
@@ -55,7 +56,9 @@ class PropertyGroupManager:
         if is_disabled(target_type):
             return False
 
-        attr_name = cls.generate_property_name(prop_type.__name__, key)
+        attr_name = cls.generate_property_name(prop_type.__name__, key, id(type_hint if type_hint is not None else prop_type))
+
+        print(attr_name)
 
         if hasattr(target_type, attr_name):
             prop = getattr(target_type, attr_name)
@@ -88,7 +91,7 @@ class PropertyGroupManager:
         """
         prop_type_name = prop_type.__name__.removesuffix("Type")
 
-        attr_name = cls.generate_property_name(prop_type_name, key)
+        attr_name = cls.generate_property_name(prop_type_name, key, id(prop_type))
 
         if hasattr(obj, attr_name):
             prop = getattr(obj, attr_name)
@@ -104,11 +107,11 @@ class PropertyGroupManager:
                              Please make sure that the class and key are correct.''')
 
     @classmethod
-    def delete(cls, prop_type: Type[PropertyGroup], key: str="default") -> bool:
+    def delete(cls, prop_type: type, key: str="default") -> bool:
         """Deletes the specified PropertyGroup.
 
         Args:
-            prop_type (Type[PropertyGroup]): Property to be deleted.
+            prop_type (Type[PropertyGroup]): Property to be deleted. If a type definition is used, specify the class for the type definition.
             key (str, optional): Key to identify PropertyGroups of the same type. Defaults to "default".
 
         Raises:
@@ -121,7 +124,7 @@ class PropertyGroupManager:
             if not prop == prop_type:
                 continue
 
-            attr_name = cls.generate_property_name(prop_type.__name__, key)
+            attr_name = cls.generate_property_name(prop_type.__name__, key, id(prop_type))
 
             try:
                 delattr(prop, attr_name)
