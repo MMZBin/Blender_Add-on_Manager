@@ -56,8 +56,6 @@ class PropertyGroupManager:
 
         attr_name = cls.generate_property_name(prop_type.__name__, key, id(type_hint if type_hint is not None else prop_type))
 
-        print(attr_name)
-
         if hasattr(target_type, attr_name):
             prop = getattr(target_type, attr_name)
             if not isinstance(prop, prop_type):
