@@ -22,8 +22,6 @@ if TYPE_CHECKING:
 
 T = TypeVar('T')
 
-PropertyGroupWithTypeHint = tuple[Type[PropertyGroup], Type[T]]
-
 class PropertyGroupManager:
     """Manage PropertyGroups."""
     __properties: Dict[type, List[str]] = defaultdict(lambda: [])
