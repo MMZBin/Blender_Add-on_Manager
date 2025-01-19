@@ -17,6 +17,7 @@ class Logger:
             self.__message += Logger.message_with_indent(indent, message) + '\n' if newline else ''
 
         def print(self) -> None:
+            # The log is not output as intended. Unknown cause.
             Logger.LOGGER.warning(self.__message)
             match self.__level:
                 case logging.DEBUG:
@@ -39,7 +40,7 @@ class Logger:
         cls.LOGGER = logging.getLogger(cls.ADDON.ADDON_FOLDER_NAME)
 
         handler = logging.StreamHandler()
-        handler.setLevel(5 if Config().data["is_debug_mode"] else 15)
+        handler.setLevel(logging.DEBUG if Config().data["is_debug_mode"] else logging.INFO)
 
         formatter = logging.Formatter('%(name)s - %(levelname)s - %(asctime)s - %(message)s')
         handler.setFormatter(formatter)
