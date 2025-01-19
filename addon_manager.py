@@ -4,7 +4,8 @@
 # https://opensource.org/licenses/MIT
 
 from importlib import invalidate_caches, reload
-from os.path import join, dirname, basename
+from os import mkdir
+from os.path import join, dirname, basename, exists
 import inspect
 
 from bpy.utils import register_class, unregister_class # type: ignore
@@ -29,6 +30,9 @@ class AddonManager:
         self.SYS_PATH_TO_ADDON      = __name__.split('.' + self.ADDON_FOLDER_NAME, maxsplit=1)[0] # System path to add -on folder (for example: bl_ext.user_default)
 
         self.__modules: Modules | None = None                                     # All modules and operators
+
+        if not exists(self.PATH_TO_DATA):
+            mkdir(self.PATH_TO_DATA)
 
         # 初期化のため
         Logger.init(self)
