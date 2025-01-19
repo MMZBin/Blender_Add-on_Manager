@@ -11,6 +11,7 @@ from bpy.utils import register_class, unregister_class # type: ignore
 from bpy.types import WorkSpaceTool
 
 from .config import Config
+from .debug.logger import Logger
 from .features.property_group_manager import PropertyGroupManager
 from .features.keymap_manager import KeymapManager
 
@@ -29,7 +30,9 @@ class AddonManager:
 
         self.__modules: Modules | None = None                                     # All modules and operators
 
-        PropertyGroupManager.init(self) # 初期化のため
+        # 初期化のため
+        Logger.init(self)
+        PropertyGroupManager.init(self)
 
     def register(self) -> None:
         """Register the add-on with Blender."""

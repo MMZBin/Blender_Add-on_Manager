@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from bpy import context
 from bpy.types import KeyMap, KeyMapItem
 
+
+from ..debug.logger import Logger
 from ..core import utils
 
 @dataclass
@@ -114,3 +116,5 @@ class KeymapManager:
             cls.delete(kms)
 
         cls.__keymap_data.clear()
+
+        Logger.LOGGER.debug("Keymaps has been unregistered.")

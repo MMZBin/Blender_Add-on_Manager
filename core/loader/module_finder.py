@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import logging
 from importlib import import_module
 import inspect
 from typing import TYPE_CHECKING, List
@@ -18,6 +19,8 @@ from pathlib import Path
 from bpy.types import bpy_struct
 
 from.addon_module import AddonClass, Module, Modules
+
+from ...debug.logger import Logger
 from .. import utils
 
 if TYPE_CHECKING:
@@ -84,35 +87,40 @@ class ModuleFinder:
         return Modules.from_list_of_modules(modules)
 
     def __print_log(self, modules: List[Module], disabled: List[str], priorities: List[str]) -> None:
-        """Outputs the reading result."""
-        utils.print_with_indent(0, utils.generate_addon_message(f"information on loading {self.__loader.ADDON.ADDON_FOLDER_NAME} :"))
+        """Outputs the loading result."""
+
+        log = Logger.LogConstructor(logging.INFO)
+
+        log.add(f"information on loading {self.__loader.ADDON.ADDON_FOLDER_NAME} :", 0)
 
         # print disabled modules
-        utils.print_with_indent(1, f"disabled modules : {'[N/A]' if len(disabled) == 0 else ''}")
+        log.add(f"disabled modules : {'[N/A]' if len(disabled) == 0 else ''}", 1)
         for mdl in disabled:
-            utils.print_with_indent(2, mdl.split('modules.')[1].rstrip('.'))
-        print('\n')
+            log.add(mdl.split('modules.')[1].rstrip('.'), 2)
+        log.add("")
 
         # print modules priority
-        utils.print_with_indent(1, f"load order       : {'[N/A]' if len(priorities) == 0 else ''}")
+        log.add(f"load order       : {'[N/A]' if len(priorities) == 0 else ''}", 1)
         for mdl in priorities:
-            utils.print_with_indent(2, mdl.split('modules.')[1].rstrip('.'))
-        print('\n')
+            log.add( mdl.split('modules.')[1].rstrip('.'), 2)
+        log.add("")
 
         # print loaded modules
-        utils.print_with_indent(1, "loaded modules   :")
+        log.add("loaded modules   :", 1)
         for mdl in modules:
-            utils.print_with_indent(2, f"{'[disabled]' if mdl.is_disabled else ''} {mdl.module.__name__.split('modules.')[1]}")
+            log.add(f"{'[disabled]' if mdl.is_disabled else ''} {mdl.module.__name__.split('modules.')[1]}", 2)
 
             if mdl.classes is None or len(mdl.classes) == 0:
-                utils.print_with_indent(3, "classes  : [N/A]")
+                log.add("classes  : [N/A]", 3)
                 continue
 
-            utils.print_with_indent(3, "classes  :")
+            log.add("classes  :", 3)
             for cls in mdl.classes:
-                utils.print_with_indent(4, f"{'[disabled]' if mdl.is_disabled else ''} {cls.cls.__name__.split('modules.')[0]}")
+                log.add(f"{'[disabled]' if mdl.is_disabled else ''} {cls.cls.__name__.split('modules.')[0]}", 4)
 
-        print(f"{'=' * 50}")
+        log.add(f"{'=' * 50}")
+
+        log.print()
 
     @staticmethod
     def find_classes_from_modules(module: Module) -> List[AddonClass]:

@@ -14,6 +14,7 @@ from collections import defaultdict
 from bpy import props
 from bpy.types import bpy_struct, PropertyGroup
 
+from ..debug.logger import Logger
 from ..core.utils import is_disabled
 from ..exceptions import generate_exception_message
 
@@ -65,6 +66,8 @@ class PropertyGroupManager:
 
         setattr(target_type, attr_name, props.PointerProperty(type=prop_type))
 
+        Logger.LOGGER.debug(f'Property group "{prop_type.__name__}" is registered to type "{target_type.__name__}" with name "{attr_name}".')
+
         cls.__properties[target_type].append(attr_name)
 
         return True
@@ -103,10 +106,11 @@ class PropertyGroupManager:
                              Please make sure that the class and key are correct.''')
 
     @classmethod
-    def delete(cls, prop_type: type, key: str="default") -> bool:
+    def delete(cls, target_type: type, prop_type: type, key: str="default") -> bool:
         """Deletes the specified PropertyGroup.
 
         Args:
+            target_type (Type[bpy_struct]): Class to delete property groups(for example: bpy.types.Scene).
             prop_type (Type[PropertyGroup]): Property to be deleted. If a type definition is used, specify the class for the type definition.
             key (str, optional): Key to identify PropertyGroups of the same type. Defaults to "default".
 
@@ -123,14 +127,16 @@ class PropertyGroupManager:
             attr_name = cls.generate_property_name(prop_type.__name__, key, id(prop_type))
 
             try:
-                delattr(prop, attr_name)
+                delattr(target_type, attr_name)
             except AttributeError as e:
-                raise AttributeError(f'Property "{attr_name}" does not exists in "{prop_type.__name__}.') from e
+                raise AttributeError(f'Property "{attr_name}" does not exists in "{target_type.__name__}.') from e
 
             try:
                 cls.__properties[prop].remove(attr_name)
             except ValueError:
                 pass
+
+            Logger.LOGGER.debug(f'Property group "{prop_type.__name__}" is unregistered to type "{target_type.__name__}" with name "{attr_name}".')
 
             return True
 
@@ -146,3 +152,5 @@ class PropertyGroupManager:
                     pass
 
         self.__properties.clear()
+
+        Logger.LOGGER.debug("Property group has been unregistered.")

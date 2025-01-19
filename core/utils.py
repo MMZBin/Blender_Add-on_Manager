@@ -10,10 +10,6 @@
 from bpy.types import bpy_struct
 from .loader.addon_module import AddonClass
 
-def generate_addon_message(message: str) -> str:
-    return f'[AddonManager] {message}'
-
-
 def isinstance(obj: object, class_or_tuple: type | tuple[type]) -> bool:
     """Compare the type of instance.
 
@@ -35,6 +31,3 @@ def is_disabled(cls: type[bpy_struct]) -> bool:
     if hasattr(cls, "_addon_manager_metadata") and isinstance(cls._addon_manager_metadata, AddonClass):
         return cls._addon_manager_metadata.is_disabled # type: ignore
     return False
-
-def print_with_indent(level: int, message: str, width: int=4) -> None:
-    print(f"{' ' * width * level}{message}")
