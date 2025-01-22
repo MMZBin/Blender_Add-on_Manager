@@ -7,11 +7,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Dict, List, Type, TypeVar
 
 from collections import defaultdict
+from dataclasses import dataclass
 
-from bpy import props
+import bpy
 from bpy.types import bpy_struct, PropertyGroup
 
 from ..debug.logger import Logger
@@ -22,6 +23,20 @@ if TYPE_CHECKING:
     from ..addon_manager import AddonManager
 
 T = TypeVar('T')
+
+@dataclass
+class PropertyInfo:
+    prop_type:           Type[PropertyGroup]
+    type_hint:           type | None         = None      # Type hint for the property group.
+    key:                 str                 = "default" # Key to identify PropertyGroups of the same type.
+
+    name:                str | None          = ""
+    description:         str | None          = ""
+    translation_context: str | None          = ""
+    options:             Any | None          = 'ANIMATABLE'
+    tags:                Any | None          = 'set()'
+    poll:                Any | None          = None
+    update:              Any | None          = None
 
 class PropertyGroupManager:
     """Manage PropertyGroups."""
@@ -37,40 +52,34 @@ class PropertyGroupManager:
         return '_'.join((cls.ADDON.ADDON_FOLDER_NAME, str(id), name, key))
 
     @classmethod
-    def add(cls, target_type: Type[bpy_struct], prop_type: Type[PropertyGroup], type_hint: type | None=None, key: str="default") -> bool:
+    def add(cls, target_type: Type[bpy_struct], props: PropertyInfo | List[PropertyInfo]) -> None:
         """Add PropertyGroup.
 
         Args:
             target_type (Type[bpy_struct]): Class to add property groups(for example: bpy.types.Scene).
-            type_hint (type | None, optional): Class used for type definition. The property group and attributes must match. Defaults to "None"
-            prop_type (Type[PropertyGroup]): PropertyGroup to be added.
-            key (str, optional): Key to identify PropertyGroups of the same type. Defaults to "default".
+            props (PropertyInfo | List[PropertyInfo]): PropertyGroup(s) to add.
 
         Raises:
             TypeError: Raises when a property with the same name has already been added.
-
-        Returns:
-            bool: Returns "False" if the class is disabled or already registered.
         """
-        if is_disabled(target_type):
-            return False
+        for prop in props if isinstance(props, list) else [props]:
+            if is_disabled(prop.prop_type):
+                continue
 
-        attr_name = cls.generate_property_name(prop_type.__name__, key, id(type_hint if type_hint is not None else prop_type))
+            attr_name = cls.generate_property_name(prop.prop_type.__name__, prop.key, id(prop.type_hint if prop.type_hint is not None else prop.prop_type))
 
-        if hasattr(target_type, attr_name):
-            prop = getattr(target_type, attr_name)
-            if not isinstance(prop, prop_type):
-                raise TypeError(generate_exception_message(f'Property "{attr_name}" already exists in "{target_type.__name__}.'))
+            if hasattr(target_type, attr_name):
+                prop = getattr(target_type, attr_name)
+                if not isinstance(prop, prop.prop_type):
+                    raise TypeError(generate_exception_message(f'Property "{attr_name}" already exists in "{target_type.__name__}.'))
 
-            return False
+                continue
 
-        setattr(target_type, attr_name, props.PointerProperty(type=prop_type))
+            setattr(target_type, attr_name, bpy.props.PointerProperty(type=prop.prop_type))
 
-        Logger.LOGGER.debug(f'Property group "{prop_type.__name__}" is registered to type "{target_type.__name__}" with name "{attr_name}".')
+            Logger.LOGGER.debug(f'Property group "{prop.prop_type.__name__}" is registered to type "{target_type.__name__}" with name "{attr_name}".')
 
-        cls.__properties[target_type].append(attr_name)
-
-        return True
+            cls.__properties[target_type].append(attr_name)
 
     @classmethod
     def get(cls, obj: object, prop_type: Type[T], key: str="default") -> T:
