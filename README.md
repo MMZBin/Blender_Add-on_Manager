@@ -9,6 +9,10 @@ Blender Add-on Manager is a framework designed to support Blender add-on develop
 
 It abstracts tasks such as registering and unregistering add-on-related classes, managing keymaps, and handling properties.
 
+__This framework has been tested with Blender 4.3.__
+
+__This framework requires `blender_manifest.toml` to work.__
+
 ## Usage
 Place this repository in your project folder and create modules within the `modules` folder to enable its functionality.
 
