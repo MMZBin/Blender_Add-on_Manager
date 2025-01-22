@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from os.path import dirname, join
-from typing import Any, List, NotRequired, Self, TypedDict
+from typing import Any, Dict, List, NotRequired, Self, TypedDict
 
 import tomllib
 
@@ -42,6 +42,9 @@ class Config:
 
     def load(self) -> None:
         """Loads configurations from the file system."""
+        with open(join(dirname(dirname(__file__)), 'blender_manifest.toml'), "rb") as file:
+            self.__manifest = tomllib.load(file)
+
         try:
             with open(self.__path, "rb") as file:
                 self.__data = tomllib.load(file) # type: ignore
@@ -56,6 +59,11 @@ class Config:
     def data(self) -> Config.Items:
         """Returns configuration data in dictionary format."""
         return self.__data
+
+    @property
+    def manifest(self) -> Dict[str, Any]:
+        """Returns the manifest data."""
+        return self.__manifest
 
     def __data_to_toml(self) -> str:
         result: str = ""
