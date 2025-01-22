@@ -26,6 +26,21 @@ T = TypeVar('T')
 
 @dataclass
 class PropertyInfo:
+    """Property group information.
+
+    Args:
+        prop_type (Type[PropertyGroup]): Property group class.
+        type_hint (type | None, optional): Type hint for the property group. Defaults to None.
+        key (str, optional): Key to identify PropertyGroups of the same type. Defaults to "default".
+        name (str | None, optional): Property group name. Defaults to "".
+        description (str | None, optional): Property group description. Defaults to "".
+        translation_context (str | None, optional): Translation context for the property group. Defaults to "".
+        options (Any | None, optional): Property group options. Defaults to 'ANIMATABLE'.
+        tags (Any | None, optional): Property group tags. Defaults to 'set()'.
+        poll (Any | None, optional): Property group poll. Defaults to None.
+        update (Any | None, optional): Property group update. Defaults to None.
+
+    """
     prop_type:           Type[PropertyGroup]
     type_hint:           type | None         = None      # Type hint for the property group.
     key:                 str                 = "default" # Key to identify PropertyGroups of the same type.
