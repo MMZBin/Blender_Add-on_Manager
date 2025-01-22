@@ -39,7 +39,6 @@ class PropertyInfo:
         tags (Any | None, optional): Property group tags. Defaults to 'set()'.
         poll (Any | None, optional): Property group poll. Defaults to None.
         update (Any | None, optional): Property group update. Defaults to None.
-
     """
     prop_type:           Type[PropertyGroup]
     type_hint:           type | None         = None      # Type hint for the property group.
