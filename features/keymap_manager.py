@@ -15,7 +15,7 @@ from ..debug.logger import Logger
 from ..core import utils
 
 @dataclass
-class Key:
+class KeyInfo:
     idname:       str | type               # 対象のキー
     type:         str | int | None         # 追加のキー
     value:        str | int | None         # 実行するキーの状態(トリガー)
@@ -35,7 +35,7 @@ class KeymapManager:
     __keymap_data: List[Tuple[KeyMap, KeyMapItem]] = []
 
     @classmethod
-    def add(cls, keys: List[Key] | Key,
+    def add(cls, keys: List[KeyInfo] | KeyInfo,
             name: str = 'Window', space_type: str = 'EMPTY', region_type: str = 'WINDOW',
             modal: bool = False, tool: bool = False) -> List[Tuple[KeyMap, KeyMapItem]]:
         """_summary_

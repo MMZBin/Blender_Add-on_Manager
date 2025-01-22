@@ -79,7 +79,7 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
 - 例:
 ```python
 def register() -> None:
-    KeymapManager.add(Key(Your_Operator, "F1", "PRESS"))
+    KeymapManager.add(KeyInfo(Your_Operator, "F1", "PRESS"))
 ```
 
 ### プロパティグループ管理機能([PropertyGroupManager](/features/property_group_manager.py))

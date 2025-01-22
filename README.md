@@ -78,7 +78,7 @@ Place this repository in your project folder and create modules within the `modu
 - Example:
 ```python
 def register() -> None:
-    KeymapManager.add(Key(Your_Operator, "F1", "PRESS"))
+    KeymapManager.add(KeyInfo(Your_Operator, "F1", "PRESS"))
 ```
 
 ### Property group Management ([PropertyGroupManager](/features/property_group_manager.py))
