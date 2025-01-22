@@ -30,7 +30,7 @@ class KeyInfo:
     head:         bool             = False
 
 
-class KeymapManager:
+class KeyMapManager:
     """manage keymap."""
     __keymap_data: List[Tuple[KeyMap, KeyMapItem]] = []
 

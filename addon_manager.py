@@ -17,7 +17,7 @@ from bpy.app   import translations
 from .config import Config
 from .debug.logger import Logger
 from .features.property_group_manager import PropertyGroupManager
-from .features.keymap_manager import KeymapManager
+from .features.keymap_manager import KeyMapManager
 
 from .core.loader.module_loader import ModuleLoader
 from .core.loader.addon_module import Modules
@@ -91,7 +91,7 @@ class AddonManager:
                 unregister_class(cls)
 
         self.__call_modules_func("unregister")
-        KeymapManager().unregister()
+        KeyMapManager.unregister()
         PropertyGroupManager().unregister()
 
     def __call_modules_func(self, identifier: str) -> None:

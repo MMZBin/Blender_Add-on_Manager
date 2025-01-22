@@ -70,7 +70,7 @@ Place this repository in your project folder and create modules within the `modu
             - Classes with smaller priority numbers are loaded first.
             - Only compared within the same module.
 
-### Keymap Management ([KeymapManager](/features/keymap_manager.py))
+### Keymap Management ([KeyMapManager](/features/keymap_manager.py))
 - Abstracts keymap management.
 - Static class.
 - Use the `add()` method to register keymaps and the `delete()` method to remove them.
@@ -78,7 +78,7 @@ Place this repository in your project folder and create modules within the `modu
 - Example:
 ```python
 def register() -> None:
-    KeymapManager.add(KeyInfo(Your_Operator, "F1", "PRESS"))
+    KeyMapManager.add(KeyInfo(Your_Operator, "F1", "PRESS"))
 ```
 
 ### Property group Management ([PropertyGroupManager](/features/property_group_manager.py))

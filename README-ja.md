@@ -71,7 +71,7 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
             - このデコレータに渡した番号が小さいほど先に読み込まれます。
             - 同じモジュール内でのみ比較されます。
 
-### キーマップ管理機能([KeymapManager](/features/keymap_manager.py))
+### キーマップ管理機能([KeyMapManager](/features/keymap_manager.py))
 - キーマップの管理を抽象化します。
 - 静的クラスです。
 - `add()`メソッドでキーマップを登録し、`delete()`メソッドで削除します。
@@ -79,7 +79,7 @@ Blender Add-on ManagerはBlender Python APIを使ったBlenderアドオン開発
 - 例:
 ```python
 def register() -> None:
-    KeymapManager.add(KeyInfo(Your_Operator, "F1", "PRESS"))
+    KeyMapManager.add(KeyInfo(Your_Operator, "F1", "PRESS"))
 ```
 
 ### プロパティグループ管理機能([PropertyGroupManager](/features/property_group_manager.py))
